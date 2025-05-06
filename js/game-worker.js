@@ -90,7 +90,7 @@ function initWorkerGame() {
     }
 }
 
-// Game loop - simple and standard implementation
+// Game loop with support for both limited and unlimited frame rates
 function workerGameLoop(timestamp) {
     // If no timestamp provided (first call), use current time
     if (!timestamp) timestamp = getWorkerTimestamp();
@@ -125,8 +125,18 @@ function workerGameLoop(timestamp) {
         drawWorkerGameOver();
     }
 
-    // Continue game loop with standard requestAnimationFrame
-    workerGameState.animationFrameId = requestAnimationFrame(workerGameLoop);
+    // Continue game loop based on frame rate limiting setting
+    if (workerGameState.limitFrameRate) {
+        // Use requestAnimationFrame for limited frame rate (usually 60 FPS)
+        workerGameState.animationFrameId = requestAnimationFrame(workerGameLoop);
+    } else {
+        // Use setTimeout with 0 delay for unlimited frame rate
+        // This allows frame rates higher than monitor refresh rate
+        setTimeout(() => {
+            const nextTimestamp = getWorkerTimestamp();
+            workerGameLoop(nextTimestamp);
+        }, 0);
+    }
 }
 
 // Update game state
@@ -516,7 +526,7 @@ function setupWorkerEventListeners() {
             case 'f':
             case 'F':
                 // Toggle frame rate limiting
-                workerGameState.limitFrameRate = !workerGameState.limitFrameRate;
+                toggleWorkerFrameRateLimit();
                 break;
         }
     });
@@ -548,6 +558,25 @@ function setupWorkerEventListeners() {
 
     // Window resize
     window.addEventListener('resize', resizeWorkerCanvas);
+}
+
+// Toggle frame rate limiting
+function toggleWorkerFrameRateLimit() {
+    // Toggle the frame rate limit flag
+    workerGameState.limitFrameRate = !workerGameState.limitFrameRate;
+
+    // If we're switching to limited mode, we need to cancel any existing setTimeout
+    // and restart the loop with requestAnimationFrame
+    if (workerGameState.limitFrameRate) {
+        // Cancel any existing animation frame
+        if (workerGameState.animationFrameId) {
+            cancelAnimationFrame(workerGameState.animationFrameId);
+        }
+
+        // Restart with requestAnimationFrame
+        workerGameState.animationFrameId = requestAnimationFrame(workerGameLoop);
+    }
+    // If we're switching to unlimited mode, the change will take effect on the next frame
 }
 
 // Start the worker game when the page loads
