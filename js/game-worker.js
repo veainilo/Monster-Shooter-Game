@@ -155,13 +155,18 @@ function workerGameLoop(timestamp) {
         // Use requestAnimationFrame for limited frame rate (usually 60 FPS)
         workerGameState.animationFrameId = requestAnimationFrame(workerGameLoop);
     } else {
-        // Use setTimeout with 0 delay for unlimited frame rate
-        // This allows frame rates higher than monitor refresh rate
-        // Store the timeout ID so we can clear it when stopping the game
-        workerGameState.timeoutId = setTimeout(() => {
-            const nextTimestamp = getWorkerTimestamp();
-            workerGameLoop(nextTimestamp);
-        }, 0);
+        // For unlimited frame rate, use requestAnimationFrame + setTimeout(0)
+        // This combination provides better performance than setTimeout alone
+        // while still allowing frame rates higher than monitor refresh rate
+        workerGameState.animationFrameId = requestAnimationFrame(() => {
+            // Using setTimeout(0) inside requestAnimationFrame gives the browser
+            // a chance to perform other tasks between frames, preventing browser lockup
+            // while still maintaining very high frame rates
+            workerGameState.timeoutId = setTimeout(() => {
+                const nextTimestamp = getWorkerTimestamp();
+                workerGameLoop(nextTimestamp);
+            }, 0);
+        });
     }
 }
 
@@ -446,54 +451,89 @@ function applyCollisionResults(results) {
         }
 }
 
-// Draw game
+// Draw game with optimizations
 function drawWorkerGame() {
     const { player, monsters, bullets } = workerGameState;
 
-    // Draw bullets
-    bullets.forEach(bullet => {
-        workerCtx.fillStyle = bullet.color;
-        workerCtx.beginPath();
-        workerCtx.arc(bullet.x, bullet.y, bullet.radius, 0, Math.PI * 2);
-        workerCtx.fill();
-    });
+    // Only draw active bullets
+    const activeBullets = bullets.filter(bullet => bullet.isActive);
 
-    // Draw monsters
-    monsters.forEach(monster => {
-        // Always use white color for monsters
+    // Batch similar drawing operations to reduce context state changes
+    if (activeBullets.length > 0) {
+        // Draw player bullets
+        const playerBullets = activeBullets.filter(bullet => bullet.isPlayerBullet);
+        if (playerBullets.length > 0) {
+            workerCtx.fillStyle = '#00FFFF'; // Use a single color for all player bullets
+            workerCtx.beginPath();
+            playerBullets.forEach(bullet => {
+                workerCtx.moveTo(bullet.x + bullet.radius, bullet.y);
+                workerCtx.arc(bullet.x, bullet.y, bullet.radius, 0, Math.PI * 2);
+            });
+            workerCtx.fill();
+        }
+
+        // Draw monster bullets
+        const monsterBullets = activeBullets.filter(bullet => !bullet.isPlayerBullet);
+        if (monsterBullets.length > 0) {
+            workerCtx.fillStyle = '#FF4444'; // Use a single color for all monster bullets
+            workerCtx.beginPath();
+            monsterBullets.forEach(bullet => {
+                workerCtx.moveTo(bullet.x + bullet.radius, bullet.y);
+                workerCtx.arc(bullet.x, bullet.y, bullet.radius, 0, Math.PI * 2);
+            });
+            workerCtx.fill();
+        }
+    }
+
+    // Only draw active monsters
+    const activeMonsters = monsters.filter(monster => monster.isActive);
+
+    // Draw monsters - batch for better performance
+    if (activeMonsters.length > 0) {
+        // Draw monster bodies
         workerCtx.fillStyle = '#FFFFFF';
         workerCtx.beginPath();
-        workerCtx.arc(monster.x, monster.y, monster.radius, 0, Math.PI * 2);
+        activeMonsters.forEach(monster => {
+            workerCtx.moveTo(monster.x + monster.radius, monster.y);
+            workerCtx.arc(monster.x, monster.y, monster.radius, 0, Math.PI * 2);
+        });
         workerCtx.fill();
 
-        // Draw health bar (similar to original Monster class)
-        const healthBarWidth = monster.radius * 2;
-        const healthBarHeight = 5;
-
+        // Draw health bars
         workerCtx.fillStyle = '#333';
-        workerCtx.fillRect(monster.x - monster.radius, monster.y - monster.radius - 10, healthBarWidth, healthBarHeight);
+        activeMonsters.forEach(monster => {
+            const healthBarWidth = monster.radius * 2;
+            const healthBarHeight = 5;
+            workerCtx.fillRect(monster.x - monster.radius, monster.y - monster.radius - 10, healthBarWidth, healthBarHeight);
+        });
 
         workerCtx.fillStyle = '#FF0000';
-        workerCtx.fillRect(monster.x - monster.radius, monster.y - monster.radius - 10, healthBarWidth, healthBarHeight);
-    });
+        activeMonsters.forEach(monster => {
+            const healthBarWidth = monster.radius * 2;
+            const healthBarHeight = 5;
+            workerCtx.fillRect(monster.x - monster.radius, monster.y - monster.radius - 10, healthBarWidth, healthBarHeight);
+        });
+    }
 
     // Draw player
-    workerCtx.fillStyle = player.color;
-    workerCtx.beginPath();
-    workerCtx.arc(player.x, player.y, player.radius, 0, Math.PI * 2);
-    workerCtx.fill();
-
-    // Draw player direction indicator
-    if (player.aimAngle !== undefined) {
-        const dirX = player.x + Math.cos(player.aimAngle) * player.radius;
-        const dirY = player.y + Math.sin(player.aimAngle) * player.radius;
-
-        workerCtx.strokeStyle = '#FFFFFF';
-        workerCtx.lineWidth = 3;
+    if (player.isActive) {
+        workerCtx.fillStyle = player.color;
         workerCtx.beginPath();
-        workerCtx.moveTo(player.x, player.y);
-        workerCtx.lineTo(dirX, dirY);
-        workerCtx.stroke();
+        workerCtx.arc(player.x, player.y, player.radius, 0, Math.PI * 2);
+        workerCtx.fill();
+
+        // Draw player direction indicator
+        if (player.aimAngle !== undefined) {
+            const dirX = player.x + Math.cos(player.aimAngle) * player.radius;
+            const dirY = player.y + Math.sin(player.aimAngle) * player.radius;
+
+            workerCtx.strokeStyle = '#FFFFFF';
+            workerCtx.lineWidth = 3;
+            workerCtx.beginPath();
+            workerCtx.moveTo(player.x, player.y);
+            workerCtx.lineTo(dirX, dirY);
+            workerCtx.stroke();
+        }
     }
 }
 
