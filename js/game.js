@@ -38,7 +38,18 @@ function initGame() {
         animationFrameId: null, // Store animation frame ID
 
         // Visual effects systems
-        particleSystem: new ParticleSystem()
+        particleSystem: new ParticleSystem(),
+
+        // Detailed timing measurements
+        timings: {
+            playerUpdateTime: 0,
+            monsterUpdateTime: 0,
+            bulletUpdateTime: 0,
+            monsterSpawnTime: 0,
+            collisionTime: 0,
+            renderTime: 0,
+            totalFrameTime: 0
+        }
     };
 
     // Set up event listeners
@@ -55,8 +66,11 @@ const getTimestamp = () => {
 
 // Game loop with support for both limited and unlimited frame rates
 function gameLoop(timestamp, gameState) {
+    // Start measuring total frame time
+    const frameStartTime = getTimestamp();
+
     // If no timestamp provided (first call), use current time
-    if (!timestamp) timestamp = getTimestamp();
+    if (!timestamp) timestamp = frameStartTime;
 
     // Calculate delta time
     const deltaTime = (timestamp - gameState.lastTime) / 1000;
@@ -80,8 +94,14 @@ function gameLoop(timestamp, gameState) {
         // Update game
         updateGame(deltaTime, gameState);
 
+        // Measure render time
+        const renderStartTime = getTimestamp();
+
         // Draw game
         drawGame(gameState);
+
+        // Calculate render time
+        gameState.timings.renderTime = getTimestamp() - renderStartTime;
 
         // Update UI
         updateUI(gameState);
@@ -89,6 +109,9 @@ function gameLoop(timestamp, gameState) {
         // Draw game over screen
         drawGameOver(gameState);
     }
+
+    // Calculate total frame time
+    gameState.timings.totalFrameTime = getTimestamp() - frameStartTime;
 
     // Continue game loop based on frame rate limiting setting
     if (gameState.limitFrameRate) {
@@ -107,24 +130,54 @@ function gameLoop(timestamp, gameState) {
 function updateGame(deltaTime, gameState) {
     const { player, monsters, bullets, monsterSpawner } = gameState;
 
+    // Measure player update time
+    const playerStartTime = getTimestamp();
+
     // Update player
     player.update(deltaTime, monsters, bullets);
+
+    // Calculate player update time
+    gameState.timings.playerUpdateTime = getTimestamp() - playerStartTime;
+
+    // Measure monster update time
+    const monsterStartTime = getTimestamp();
 
     // Update monsters
     monsters.forEach(monster => {
         monster.update(deltaTime, player, bullets);
     });
 
+    // Calculate monster update time
+    gameState.timings.monsterUpdateTime = getTimestamp() - monsterStartTime;
+
+    // Measure bullet update time
+    const bulletStartTime = getTimestamp();
+
     // Update bullets
     bullets.forEach(bullet => {
         bullet.update(deltaTime);
     });
 
+    // Calculate bullet update time
+    gameState.timings.bulletUpdateTime = getTimestamp() - bulletStartTime;
+
+    // Measure monster spawning time
+    const spawnStartTime = getTimestamp();
+
     // Spawn monsters
     monsterSpawner.update(deltaTime, monsters);
 
+    // Calculate monster spawning time
+    gameState.timings.monsterSpawnTime = getTimestamp() - spawnStartTime;
+
+    // Measure collision detection time
+    const collisionStartTime = getTimestamp();
+
     // Check for collisions
     handleCollisions(gameState);
+
+    // Calculate collision detection time
+    gameState.timings.collisionTime = getTimestamp() - collisionStartTime;
 
     // Clean up inactive entities
     cleanupEntities(gameState);
@@ -220,7 +273,7 @@ function drawGame(gameState) {
 
 // Update UI
 function updateUI(gameState) {
-    const { player, fps, limitFrameRate, monsterSpawner } = gameState;
+    const { player, fps, limitFrameRate, monsterSpawner, timings } = gameState;
 
     document.getElementById('score').textContent = `Score: ${player.score}`;
     document.getElementById('health').textContent = `INVINCIBLE`;
@@ -242,6 +295,29 @@ function updateUI(gameState) {
     // Display FPS with current mode
     const modeText = limitFrameRate ? "LIMITED (60 FPS)" : "UNLIMITED";
     document.getElementById('fps').textContent = `FPS: ${fps} - ${modeText}`;
+
+    // Create or update timing information element
+    let timingInfoElement = document.getElementById('timing-info');
+    if (!timingInfoElement) {
+        timingInfoElement = document.createElement('div');
+        timingInfoElement.id = 'timing-info';
+        timingInfoElement.className = 'timing-info';
+        document.querySelector('#original-game .game-info').appendChild(timingInfoElement);
+    }
+
+    // Format timing information
+    const formatTime = (time) => time.toFixed(2);
+
+    // Display detailed timing information
+    timingInfoElement.innerHTML = `
+        <div>Player Update: ${formatTime(timings.playerUpdateTime)}ms</div>
+        <div>Monster Update: ${formatTime(timings.monsterUpdateTime)}ms</div>
+        <div>Bullet Update: ${formatTime(timings.bulletUpdateTime)}ms</div>
+        <div>Monster Spawn: ${formatTime(timings.monsterSpawnTime)}ms</div>
+        <div>Collision: ${formatTime(timings.collisionTime)}ms</div>
+        <div>Render: ${formatTime(timings.renderTime)}ms</div>
+        <div>Total Frame: ${formatTime(timings.totalFrameTime)}ms</div>
+    `;
 }
 
 // Draw game over screen

@@ -116,3 +116,18 @@ body {
     opacity: 0.3;
     pointer-events: none;
 }
+
+/* Timing information styling */
+.timing-info {
+    margin-top: 10px;
+    padding: 5px;
+    background-color: rgba(0, 0, 0, 0.7);
+    border-radius: 3px;
+    font-size: 12px;
+    max-width: 200px;
+}
+
+.timing-info div {
+    margin: 2px 0;
+    color: #00FF00;
+}

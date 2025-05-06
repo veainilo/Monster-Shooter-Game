@@ -59,7 +59,18 @@ function initWorkerGame() {
         // Performance tracking
         mainThreadFps: 0, // Track main thread FPS separately from worker FPS
         lastMainThreadFpsUpdate: 0,
-        mainThreadFrameCount: 0
+        mainThreadFrameCount: 0,
+
+        // Detailed timing measurements
+        timings: {
+            playerUpdateTime: 0,
+            monsterUpdateTime: 0,
+            bulletUpdateTime: 0,
+            monsterSpawnTime: 0,
+            dataSerializationTime: 0,
+            renderTime: 0,
+            totalFrameTime: 0
+        }
     };
 
     // Create and initialize the worker for collision detection
@@ -92,8 +103,11 @@ function initWorkerGame() {
 
 // Game loop with support for both limited and unlimited frame rates
 function workerGameLoop(timestamp) {
+    // Start measuring total frame time
+    const frameStartTime = getWorkerTimestamp();
+
     // If no timestamp provided (first call), use current time
-    if (!timestamp) timestamp = getWorkerTimestamp();
+    if (!timestamp) timestamp = frameStartTime;
 
     // Calculate delta time
     const deltaTime = (timestamp - workerGameState.lastTime) / 1000;
@@ -115,8 +129,14 @@ function workerGameLoop(timestamp) {
         // Update game
         updateWorkerGame(deltaTime);
 
+        // Measure render time
+        const renderStartTime = getWorkerTimestamp();
+
         // Draw game
         drawWorkerGame();
+
+        // Calculate render time
+        workerGameState.timings.renderTime = getWorkerTimestamp() - renderStartTime;
 
         // Update UI
         updateWorkerUI();
@@ -124,6 +144,9 @@ function workerGameLoop(timestamp) {
         // Draw game over screen
         drawWorkerGameOver();
     }
+
+    // Calculate total frame time
+    workerGameState.timings.totalFrameTime = getWorkerTimestamp() - frameStartTime;
 
     // Continue game loop based on frame rate limiting setting
     if (workerGameState.limitFrameRate) {
@@ -143,21 +166,45 @@ function workerGameLoop(timestamp) {
 function updateWorkerGame(deltaTime) {
     const { player, monsters, bullets, monsterSpawner } = workerGameState;
 
+    // Measure player update time
+    const playerStartTime = getWorkerTimestamp();
+
     // Update player
     player.update(deltaTime, monsters, bullets);
+
+    // Calculate player update time
+    workerGameState.timings.playerUpdateTime = getWorkerTimestamp() - playerStartTime;
+
+    // Measure monster update time
+    const monsterStartTime = getWorkerTimestamp();
 
     // Update monsters
     monsters.forEach(monster => {
         monster.update(deltaTime, player, bullets);
     });
 
+    // Calculate monster update time
+    workerGameState.timings.monsterUpdateTime = getWorkerTimestamp() - monsterStartTime;
+
+    // Measure bullet update time
+    const bulletStartTime = getWorkerTimestamp();
+
     // Update bullets
     bullets.forEach(bullet => {
         bullet.update(deltaTime);
     });
 
+    // Calculate bullet update time
+    workerGameState.timings.bulletUpdateTime = getWorkerTimestamp() - bulletStartTime;
+
+    // Measure monster spawning time
+    const spawnStartTime = getWorkerTimestamp();
+
     // Spawn monsters - use the same spawning logic as the original version
     monsterSpawner.update(deltaTime, monsters);
+
+    // Calculate monster spawning time
+    workerGameState.timings.monsterSpawnTime = getWorkerTimestamp() - spawnStartTime;
 
     // Ensure all monsters and bullets have IDs
     monsters.forEach((monster, index) => {
@@ -179,7 +226,8 @@ function updateWorkerGame(deltaTime) {
         // Mark worker as busy until it responds
         workerGameState.workerBusy = true;
 
-
+        // Measure data serialization time
+        const serializationStartTime = getWorkerTimestamp();
 
         // Serialize data to ArrayBuffer for transfer
         const buffer = new ArrayBuffer(1000000); // Allocate a large buffer
@@ -215,6 +263,9 @@ function updateWorkerGame(deltaTime) {
             view[offset++] = bullet.currentPierceCount;
             view[offset++] = bullet.maxPierceCount;
         });
+
+        // Calculate data serialization time
+        workerGameState.timings.dataSerializationTime = getWorkerTimestamp() - serializationStartTime;
 
         // Send data to worker using transferable
         gameWorker.postMessage({
@@ -454,7 +505,7 @@ function drawWorkerGameOver() {
 
 // Update UI
 function updateWorkerUI() {
-    const { player, limitFrameRate, monsterSpawner, collisionProcessTime } = workerGameState;
+    const { player, limitFrameRate, monsterSpawner, collisionProcessTime, timings } = workerGameState;
 
     document.getElementById('worker-score').textContent = `Score: ${player.score}`;
     document.getElementById('worker-health').textContent = `INVINCIBLE`;
@@ -481,6 +532,29 @@ function updateWorkerUI() {
     const fps = workerGameState.fps || 0;
 
     document.getElementById('worker-fps').textContent = `FPS: ${fps} - ${modeText}${workerText}`;
+
+    // Create or update timing information element
+    let timingInfoElement = document.getElementById('worker-timing-info');
+    if (!timingInfoElement) {
+        timingInfoElement = document.createElement('div');
+        timingInfoElement.id = 'worker-timing-info';
+        timingInfoElement.className = 'timing-info';
+        document.querySelector('#worker-game .game-info').appendChild(timingInfoElement);
+    }
+
+    // Format timing information
+    const formatTime = (time) => time.toFixed(2);
+
+    // Display detailed timing information
+    timingInfoElement.innerHTML = `
+        <div>Player Update: ${formatTime(timings.playerUpdateTime)}ms</div>
+        <div>Monster Update: ${formatTime(timings.monsterUpdateTime)}ms</div>
+        <div>Bullet Update: ${formatTime(timings.bulletUpdateTime)}ms</div>
+        <div>Monster Spawn: ${formatTime(timings.monsterSpawnTime)}ms</div>
+        <div>Data Serialization: ${formatTime(timings.dataSerializationTime)}ms</div>
+        <div>Render: ${formatTime(timings.renderTime)}ms</div>
+        <div>Total Frame: ${formatTime(timings.totalFrameTime)}ms</div>
+    `;
 }
 
 // Set up event listeners
