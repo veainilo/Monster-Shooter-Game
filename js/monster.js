@@ -192,7 +192,8 @@ class MonsterSpawner {
         const radius = 15 + Math.random() * 10;
         const health = 30 + (this.difficulty * 10);
         const speed = 50 + (this.difficulty * 5);
-        const color = `hsl(${Math.random() * 360}, 70%, 50%)`;
+        // Use white color for all monsters to match the original version
+        const color = '#FFFFFF';
 
         monsters.push(new Monster(x, y, radius, health, speed, color));
     }

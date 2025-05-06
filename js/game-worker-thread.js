@@ -64,10 +64,16 @@ function processCollisions(data) {
 
                 // Add both monsters to results if not already added
                 if (!results.monsters.some(m => m.id === monsters[i].id)) {
-                    results.monsters.push({ ...monsters[i] });
+                    results.monsters.push({
+                        ...monsters[i],
+                        color: '#FFFFFF' // Ensure color is white
+                    });
                 }
                 if (!results.monsters.some(m => m.id === monsters[j].id)) {
-                    results.monsters.push({ ...monsters[j] });
+                    results.monsters.push({
+                        ...monsters[j],
+                        color: '#FFFFFF' // Ensure color is white
+                    });
                 }
             }
         }
@@ -91,7 +97,8 @@ function processCollisions(data) {
                 if (!results.monsters.some(m => m.id === monster.id)) {
                     results.monsters.push({
                         ...monster,
-                        flash: true
+                        flash: true,
+                        color: '#FFFFFF' // Ensure color is white
                     });
                 }
 

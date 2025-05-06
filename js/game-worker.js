@@ -154,6 +154,8 @@ function updateWorkerGame(deltaTime) {
         if (!monster.id) {
             monster.id = `monster-${index}-${Date.now()}`;
         }
+        // Always ensure monster color is white
+        monster.color = '#FFFFFF';
     });
 
     bullets.forEach((bullet, index) => {
@@ -260,18 +262,21 @@ function applyCollisionResults(results) {
 
                 // Handle flashing effect
                 if (updatedMonster.flash) {
-                    // Store original color
-                    const originalColor = monster.color;
+                    // Store original color (always white)
+                    const originalColor = '#FFFFFF';
 
-                    // Flash white
+                    // Flash white (already white, but we'll keep the code for consistency)
                     monster.color = '#FFFFFF';
 
-                    // Reset color after a short delay
+                    // Reset color after a short delay (back to white)
                     setTimeout(() => {
                         if (monster && monster.isActive) {
                             monster.color = originalColor;
                         }
                     }, 100);
+                } else {
+                    // Always ensure monster color is white
+                    monster.color = '#FFFFFF';
                 }
             }
         });
@@ -308,10 +313,21 @@ function drawWorkerGame() {
 
     // Draw monsters
     monsters.forEach(monster => {
-        workerCtx.fillStyle = monster.color;
+        // Always use white color for monsters
+        workerCtx.fillStyle = '#FFFFFF';
         workerCtx.beginPath();
         workerCtx.arc(monster.x, monster.y, monster.radius, 0, Math.PI * 2);
         workerCtx.fill();
+
+        // Draw health bar (similar to original Monster class)
+        const healthBarWidth = monster.radius * 2;
+        const healthBarHeight = 5;
+
+        workerCtx.fillStyle = '#333';
+        workerCtx.fillRect(monster.x - monster.radius, monster.y - monster.radius - 10, healthBarWidth, healthBarHeight);
+
+        workerCtx.fillStyle = '#FF0000';
+        workerCtx.fillRect(monster.x - monster.radius, monster.y - monster.radius - 10, healthBarWidth, healthBarHeight);
     });
 
     // Draw player
