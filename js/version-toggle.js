@@ -17,9 +17,8 @@ const activeVersionText = document.getElementById('active-version');
 const originalWrapper = document.querySelector('.game-wrapper:nth-child(1)');
 const workerWrapper = document.querySelector('.game-wrapper:nth-child(2)');
 
-// Game canvas elements
+// Game canvas elements - use existing references if available
 const originalCanvas = document.getElementById('gameCanvas');
-const workerCanvas = document.getElementById('workerGameCanvas');
 
 // Initialize toggle functionality
 function initVersionToggle() {
@@ -40,6 +39,11 @@ function initVersionToggle() {
 
 // Toggle between game versions
 function toggleGameVersion() {
+    // Initialize mode if not set
+    if (!toggleState.mode) {
+        toggleState.mode = 'both';
+    }
+
     switch (toggleState.mode) {
         case 'both':
             // Switch to original only
@@ -121,12 +125,19 @@ function stopWorkerGame() {
         cancelAnimationFrame(window.workerGameState.animationFrameId);
     }
 
-    // Hide the canvas
-    workerCanvas.style.visibility = 'hidden';
+    // Hide the canvas - use the global reference
+    const workerCanvas = document.getElementById('workerGameCanvas');
+    if (workerCanvas) {
+        workerCanvas.style.visibility = 'hidden';
+    }
 }
 
 // Start the worker game
 function startWorkerGame() {
+    // Get the canvas - use the global reference
+    const workerCanvas = document.getElementById('workerGameCanvas');
+    if (!workerCanvas) return;
+
     // Only start if it's not already running
     if (workerCanvas.style.visibility === 'hidden') {
         // Show the canvas
