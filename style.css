@@ -41,6 +41,11 @@ body {
     font-weight: bold;
 }
 
+#monsters {
+    color: #FF00FF;
+    font-weight: bold;
+}
+
 .game-controls {
     position: absolute;
     bottom: 10px;

@@ -163,12 +163,11 @@ function handleCollisions(gameState) {
         if (bullet.isActive && bullet.isPlayerBullet) {
             monsters.forEach(monster => {
                 if (monster.isActive && circlesCollide(bullet, monster)) {
-                    monster.takeDamage(bullet.damage);
-                    bullet.isActive = false;
-
-                    if (!monster.isActive) {
+                    // Since monsters are invincible, takeDamage just returns true for scoring
+                    if (monster.takeDamage()) {
                         player.addScore(50);
                     }
+                    bullet.isActive = false;
                 }
             });
         }
@@ -185,7 +184,8 @@ function handleCollisions(gameState) {
 
 // Clean up inactive entities
 function cleanupEntities(gameState) {
-    gameState.monsters = gameState.monsters.filter(monster => monster.isActive);
+    // Since monsters are now invincible, we don't need to filter them
+    // Only clean up bullets
     gameState.bullets = gameState.bullets.filter(bullet => bullet.isActive);
 }
 
@@ -209,11 +209,14 @@ function drawGame(gameState) {
 
 // Update UI
 function updateUI(gameState) {
-    const { player, fps, limitFrameRate } = gameState;
+    const { player, fps, limitFrameRate, monsterSpawner } = gameState;
 
     document.getElementById('score').textContent = `Score: ${player.score}`;
     document.getElementById('health').textContent = `INVINCIBLE`;
     document.getElementById('level').textContent = `Bullet Level: ${player.bulletLevel}`;
+
+    // Display monster count
+    document.getElementById('monsters').textContent = `Monsters: ${monsterSpawner.totalMonstersSpawned}/${monsterSpawner.maxTotalMonsters}`;
 
     // Display FPS with current mode
     const modeText = limitFrameRate ? "LIMITED (60 FPS)" : "UNLIMITED";

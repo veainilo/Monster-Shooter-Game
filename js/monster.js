@@ -66,11 +66,25 @@ class Monster {
         ctx.fillRect(this.x - this.radius, this.y - this.radius - 10, healthBarWidth * healthPercentage, healthBarHeight);
     }
 
-    takeDamage(damage) {
-        this.health -= damage;
-        if (this.health <= 0) {
-            this.isActive = false;
-        }
+    takeDamage() {
+        // Monster is invincible, but we'll show a visual effect
+        this.flashEffect();
+
+        // Still award score to player when hit
+        return true; // Return true to indicate a successful hit for scoring
+    }
+
+    flashEffect() {
+        // Store original color
+        const originalColor = this.color;
+
+        // Flash white
+        this.color = '#FFFFFF';
+
+        // Reset color after a short delay
+        setTimeout(() => {
+            this.color = originalColor;
+        }, 100);
     }
 }
 
@@ -87,18 +101,28 @@ class MonsterSpawner {
         this.difficulty = 1;
         this.maxMonstersOnScreen = 50; // Maximum number of monsters allowed on screen
         this.spawnBatchSize = 3; // Spawn multiple monsters at once
+        this.totalMonstersSpawned = 0; // Track total monsters spawned
+        this.maxTotalMonsters = 500; // Maximum total monsters to spawn
     }
 
     update(deltaTime, monsters) {
-        // Only spawn if we haven't reached the maximum number of monsters
+        // Check if we've reached the total monster limit
+        if (this.totalMonstersSpawned >= this.maxTotalMonsters) {
+            return; // Stop spawning if we've reached the limit
+        }
+
+        // Only spawn if we haven't reached the maximum number of monsters on screen
         if (monsters.length < this.maxMonstersOnScreen) {
             // Spawn timer
             this.spawnTimer += deltaTime * 1000;
             if (this.spawnTimer >= this.spawnInterval) {
                 // Spawn multiple monsters at once
                 for (let i = 0; i < this.spawnBatchSize; i++) {
-                    if (monsters.length < this.maxMonstersOnScreen) {
+                    // Check both screen limit and total limit
+                    if (monsters.length < this.maxMonstersOnScreen &&
+                        this.totalMonstersSpawned < this.maxTotalMonsters) {
                         this.spawnMonster(monsters);
+                        this.totalMonstersSpawned++;
                     }
                 }
                 this.spawnTimer = 0;
