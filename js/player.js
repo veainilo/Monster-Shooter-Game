@@ -26,6 +26,62 @@ class Player {
 
         // Aiming
         this.aimAngle = 0;
+
+        // Add direct keyboard controls to the player
+        this.setupDirectControls();
+    }
+
+    setupDirectControls() {
+        // Add keyboard event listeners directly to the player
+        window.addEventListener('keydown', (e) => {
+            switch (e.key) {
+                case 'w':
+                case 'W':
+                case 'ArrowUp':
+                    this.moveUp = true;
+                    break;
+                case 's':
+                case 'S':
+                case 'ArrowDown':
+                    this.moveDown = true;
+                    break;
+                case 'a':
+                case 'A':
+                case 'ArrowLeft':
+                    this.moveLeft = true;
+                    break;
+                case 'd':
+                case 'D':
+                case 'ArrowRight':
+                    this.moveRight = true;
+                    break;
+            }
+        });
+
+        window.addEventListener('keyup', (e) => {
+            switch (e.key) {
+                case 'w':
+                case 'W':
+                case 'ArrowUp':
+                    this.moveUp = false;
+                    break;
+                case 's':
+                case 'S':
+                case 'ArrowDown':
+                    this.moveDown = false;
+                    break;
+                case 'a':
+                case 'A':
+                case 'ArrowLeft':
+                    this.moveLeft = false;
+                    break;
+                case 'd':
+                case 'D':
+                case 'ArrowRight':
+                    this.moveRight = false;
+                    break;
+            }
+        });
     }
 
     update(deltaTime, monsters, bullets) {
@@ -129,7 +185,7 @@ class Player {
         ctx.fillRect(this.x - this.radius, this.y - this.radius - 10, barWidth, barHeight);
     }
 
-    takeDamage(damage) {
+    takeDamage() {
         // Player is invincible, so no damage is taken
         // But we'll flash the player to indicate a hit
         this.flashEffect();
