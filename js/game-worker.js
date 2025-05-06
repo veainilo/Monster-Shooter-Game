@@ -44,8 +44,8 @@ function initWorkerGame() {
         lastFpsUpdate: 0,
         fps: 0,
 
-        // Frame rate limiting - start with limited frame rate for better stability
-        limitFrameRate: true, // Default to limited frame rate for worker version
+        // Frame rate limiting - start with unlimited frame rate for better performance comparison
+        limitFrameRate: false, // Default to unlimited frame rate for worker version
         animationFrameId: null, // Store animation frame ID
 
         // Visual effects systems
@@ -113,10 +113,12 @@ function workerGameLoop(timestamp) {
     const deltaTime = (timestamp - workerGameState.lastTime) / 1000;
     workerGameState.lastTime = timestamp;
 
-    // Simple FPS calculation
+    // More accurate FPS calculation
     workerGameState.frameCount++;
     if (timestamp - workerGameState.lastFpsUpdate >= 1000) {
-        workerGameState.fps = workerGameState.frameCount;
+        // Calculate FPS based on actual time elapsed for more accuracy
+        const elapsed = timestamp - workerGameState.lastFpsUpdate;
+        workerGameState.fps = Math.round((workerGameState.frameCount * 1000) / elapsed);
         workerGameState.frameCount = 0;
         workerGameState.lastFpsUpdate = timestamp;
     }
@@ -230,8 +232,13 @@ function updateWorkerGame(deltaTime) {
         // Measure data serialization time
         const serializationStartTime = getWorkerTimestamp();
 
-        // Serialize data to ArrayBuffer for transfer
-        const buffer = new ArrayBuffer(1000000); // Allocate a large buffer
+        // Calculate buffer size needed to avoid allocating too much memory
+        const monsterDataSize = monsters.length * 3; // x, y, radius for each monster
+        const bulletDataSize = bullets.length * 6; // x, y, radius, isPlayerBullet, currentPierceCount, maxPierceCount
+        const bufferSize = 4 + monsterDataSize + bulletDataSize; // Player data (3) + monster count (1) + bullet count (1)
+
+        // Serialize data to ArrayBuffer for transfer - use a more appropriate size
+        const buffer = new ArrayBuffer(Math.max(bufferSize * 4, 1024)); // Ensure minimum size of 1KB
         const view = new Float32Array(buffer);
 
         // Store data in the buffer (simplified approach)
@@ -245,24 +252,28 @@ function updateWorkerGame(deltaTime) {
         // Monster count
         view[offset++] = monsters.length;
 
-        // Monster data
+        // Monster data - only send active monsters
         monsters.forEach(monster => {
-            view[offset++] = monster.x;
-            view[offset++] = monster.y;
-            view[offset++] = monster.radius;
+            if (monster.isActive) {
+                view[offset++] = monster.x;
+                view[offset++] = monster.y;
+                view[offset++] = monster.radius;
+            }
         });
 
         // Bullet count
         view[offset++] = bullets.length;
 
-        // Bullet data
+        // Bullet data - only send active bullets
         bullets.forEach(bullet => {
-            view[offset++] = bullet.x;
-            view[offset++] = bullet.y;
-            view[offset++] = bullet.radius;
-            view[offset++] = bullet.isPlayerBullet ? 1 : 0;
-            view[offset++] = bullet.currentPierceCount;
-            view[offset++] = bullet.maxPierceCount;
+            if (bullet.isActive) {
+                view[offset++] = bullet.x;
+                view[offset++] = bullet.y;
+                view[offset++] = bullet.radius;
+                view[offset++] = bullet.isPlayerBullet ? 1 : 0;
+                view[offset++] = bullet.currentPierceCount;
+                view[offset++] = bullet.maxPierceCount;
+            }
         });
 
         // Calculate data serialization time
@@ -504,20 +515,8 @@ function drawWorkerGameOver() {
     workerCtx.fillText('Press R to restart', workerCanvas.width / 2, workerCanvas.height / 2 + 50);
 }
 
-// Update UI - throttle updates to reduce flickering
-let lastWorkerUIUpdateTime = 0;
-const UI_UPDATE_INTERVAL = 100; // Update UI every 100ms instead of every frame
-
+// Update UI every frame without throttling
 function updateWorkerUI() {
-    const currentTime = getWorkerTimestamp();
-
-    // Only update UI every UI_UPDATE_INTERVAL milliseconds
-    if (currentTime - lastWorkerUIUpdateTime < UI_UPDATE_INTERVAL) {
-        return;
-    }
-
-    lastWorkerUIUpdateTime = currentTime;
-
     // Make sure workerGameState still exists
     if (!workerGameState) return;
 
