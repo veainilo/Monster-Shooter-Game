@@ -26,21 +26,48 @@ function initGame() {
         lastTime: 0,
         isGameOver: false,
         upgradePoints: 0,
-        upgradeThreshold: 500 // Score needed for an upgrade
+        upgradeThreshold: 500, // Score needed for an upgrade
+
+        // FPS calculation
+        frameCount: 0,
+        lastFpsUpdate: 0,
+        fps: 0,
+
+        // Frame rate limiting
+        limitFrameRate: false, // Default to unlimited frame rate
+        animationFrameId: null // Store animation frame ID
     };
 
     // Set up event listeners
     setupEventListeners(gameState);
 
-    // Start game loop
-    requestAnimationFrame((timestamp) => gameLoop(timestamp, gameState));
+    // Start game loop with high performance timing
+    gameLoop(getTimestamp(), gameState);
 }
 
-// Game loop
+// High performance timestamp function
+const getTimestamp = () => {
+    return window.performance && window.performance.now ? window.performance.now() : Date.now();
+};
+
+// Game loop with support for both limited and unlimited frame rates
 function gameLoop(timestamp, gameState) {
+    // If no timestamp provided (first call), use current time
+    if (!timestamp) timestamp = getTimestamp();
+
     // Calculate delta time
     const deltaTime = (timestamp - gameState.lastTime) / 1000;
     gameState.lastTime = timestamp;
+
+    // FPS calculation
+    gameState.frameCount++;
+
+    // Update FPS every second
+    if (timestamp - gameState.lastFpsUpdate >= 1000) {
+        gameState.fps = Math.round((gameState.frameCount * 1000) / (timestamp - gameState.lastFpsUpdate));
+        gameState.frameCount = 0;
+        gameState.lastFpsUpdate = timestamp;
+    }
 
     // Clear canvas
     ctx.fillStyle = '#111';
@@ -60,8 +87,17 @@ function gameLoop(timestamp, gameState) {
         drawGameOver(gameState);
     }
 
-    // Continue game loop
-    requestAnimationFrame((timestamp) => gameLoop(timestamp, gameState));
+    // Continue game loop based on frame rate limiting setting
+    if (gameState.limitFrameRate) {
+        // Use requestAnimationFrame for limited frame rate (usually 60 FPS)
+        gameState.animationFrameId = requestAnimationFrame((nextTimestamp) => gameLoop(nextTimestamp, gameState));
+    } else {
+        // Use setTimeout with 0 delay for unlimited frame rate
+        setTimeout(() => {
+            const nextTimestamp = getTimestamp();
+            gameLoop(nextTimestamp, gameState);
+        }, 0);
+    }
 }
 
 // Update game state
@@ -173,11 +209,15 @@ function drawGame(gameState) {
 
 // Update UI
 function updateUI(gameState) {
-    const { player } = gameState;
+    const { player, fps, limitFrameRate } = gameState;
 
     document.getElementById('score').textContent = `Score: ${player.score}`;
     document.getElementById('health').textContent = `INVINCIBLE`;
     document.getElementById('level').textContent = `Bullet Level: ${player.bulletLevel}`;
+
+    // Display FPS with current mode
+    const modeText = limitFrameRate ? "LIMITED (60 FPS)" : "UNLIMITED";
+    document.getElementById('fps').textContent = `FPS: ${fps} - ${modeText}`;
 }
 
 // Draw game over screen
@@ -237,6 +277,15 @@ function setupEventListeners(gameState) {
                         gameState.upgradePoints--;
                     }
                 }
+                break;
+            case 'f':
+            case 'F':
+                // Toggle frame rate limiting
+                gameState.limitFrameRate = !gameState.limitFrameRate;
+
+                // Display current mode
+                const modeText = gameState.limitFrameRate ? "LIMITED (60 FPS)" : "UNLIMITED";
+                document.getElementById('fps').textContent = `FPS: ${gameState.fps} - ${modeText}`;
                 break;
         }
     });

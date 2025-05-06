@@ -36,6 +36,11 @@ body {
     margin-bottom: 5px;
 }
 
+#fps {
+    color: #FFFF00;
+    font-weight: bold;
+}
+
 .game-controls {
     position: absolute;
     bottom: 10px;
