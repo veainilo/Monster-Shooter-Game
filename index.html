@@ -94,8 +94,8 @@
         <h2 id="game-version-title">Original Version</h2>
         <div class="game-container" id="game-container">
             <!-- Game iframes - only one will be visible at a time -->
-            <iframe id="original-game-iframe" src="original-game.html" allowfullscreen></iframe>
-            <iframe id="worker-game-iframe" src="worker-game.html" style="display: none;" allowfullscreen allow="autoplay; fullscreen; accelerometer; gyroscope; magnetometer"></iframe>
+            <iframe id="original-game-iframe" src="about:blank" allowfullscreen></iframe>
+            <iframe id="worker-game-iframe" src="about:blank" style="display: none;" allowfullscreen allow="autoplay; fullscreen; accelerometer; gyroscope; magnetometer"></iframe>
         </div>
     </div>
 
@@ -144,6 +144,10 @@
             // Add click event listener to toggle button
             toggleButton.addEventListener('click', toggleGameVersion);
 
+            // Initially set both iframes to blank to prevent both from loading
+            originalIframe.src = 'about:blank';
+            workerIframe.src = 'about:blank';
+
             // Load saved preference if any
             if (toggleState.loadPreference()) {
                 // Apply the saved preference
@@ -189,12 +193,15 @@
             toggleButton.textContent = 'Switch to Web Worker Version';
             activeVersionText.textContent = 'Currently running: Original Version';
 
+            // Completely unload worker iframe by setting src to about:blank
+            workerIframe.src = 'about:blank';
+
             // Show original iframe, hide worker iframe
             originalIframe.style.display = 'block';
             workerIframe.style.display = 'none';
 
-            // Reload iframe to ensure a fresh start
-            originalIframe.src = originalIframe.src;
+            // Reload original iframe to ensure a fresh start
+            originalIframe.src = 'original-game.html';
         }
 
         // Show the worker version
@@ -204,12 +211,15 @@
             toggleButton.textContent = 'Switch to Original Version';
             activeVersionText.textContent = 'Currently running: Web Worker Version';
 
+            // Completely unload original iframe by setting src to about:blank
+            originalIframe.src = 'about:blank';
+
             // Show worker iframe, hide original iframe
             originalIframe.style.display = 'none';
             workerIframe.style.display = 'block';
 
-            // Reload iframe to ensure a fresh start
-            workerIframe.src = workerIframe.src;
+            // Reload worker iframe to ensure a fresh start
+            workerIframe.src = 'worker-game.html';
         }
 
         // Initialize when the page loads
