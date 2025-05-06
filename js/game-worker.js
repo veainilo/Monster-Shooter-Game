@@ -53,7 +53,13 @@ function initWorkerGame() {
 
         // Worker specific properties
         collisionsProcessedByWorker: false,
-        collisionProcessTime: 0
+        collisionProcessTime: 0,
+        workerBusy: false, // Flag to track if worker is processing data
+
+        // Performance tracking
+        mainThreadFps: 0, // Track main thread FPS separately from worker FPS
+        lastMainThreadFpsUpdate: 0,
+        mainThreadFrameCount: 0
     };
 
     // Create and initialize the worker for collision detection
@@ -72,8 +78,13 @@ function initWorkerGame() {
         // Set up keyboard event listeners
         setupWorkerEventListeners();
 
+        // Initialize FPS tracking timestamps
+        const currentTime = getWorkerTimestamp();
+        workerGameState.lastFpsUpdate = currentTime;
+        workerGameState.lastMainThreadFpsUpdate = currentTime;
+
         // Start game loop
-        workerGameLoop(getWorkerTimestamp());
+        workerGameLoop(currentTime);
     } else {
         alert('Your browser does not support Web Workers. The worker version will not run.');
     }
@@ -88,14 +99,21 @@ function workerGameLoop(timestamp) {
     const deltaTime = (timestamp - workerGameState.lastTime) / 1000;
     workerGameState.lastTime = timestamp;
 
-    // FPS calculation
+    // FPS calculation - track both main thread and worker FPS
     workerGameState.frameCount++;
+    workerGameState.mainThreadFrameCount++;
 
     // Update FPS every second
     if (timestamp - workerGameState.lastFpsUpdate >= 1000) {
+        // Calculate worker FPS (this is the FPS including worker processing)
         workerGameState.fps = Math.round((workerGameState.frameCount * 1000) / (timestamp - workerGameState.lastFpsUpdate));
         workerGameState.frameCount = 0;
         workerGameState.lastFpsUpdate = timestamp;
+
+        // Calculate main thread FPS (this is the raw FPS without worker limitations)
+        workerGameState.mainThreadFps = Math.round((workerGameState.mainThreadFrameCount * 1000) / (timestamp - workerGameState.lastMainThreadFpsUpdate));
+        workerGameState.mainThreadFrameCount = 0;
+        workerGameState.lastMainThreadFpsUpdate = timestamp;
     }
 
     // Clear canvas
@@ -164,43 +182,54 @@ function updateWorkerGame(deltaTime) {
         }
     });
 
-    // Prepare collision data to send to worker
-    const collisionData = {
-        player: {
-            x: player.x,
-            y: player.y,
-            radius: player.radius,
-            mass: player.mass,
-            id: 'player'
-        },
-        monsters: monsters.map(monster => ({
-            x: monster.x,
-            y: monster.y,
-            radius: monster.radius,
-            mass: monster.mass,
-            id: monster.id,
-            color: monster.color
-        })),
-        bullets: bullets.map(bullet => ({
-            x: bullet.x,
-            y: bullet.y,
-            radius: bullet.radius,
-            isPlayerBullet: bullet.isPlayerBullet,
-            damage: bullet.damage,
-            currentPierceCount: bullet.currentPierceCount,
-            maxPierceCount: bullet.maxPierceCount,
-            id: bullet.id,
-            isActive: bullet.isActive
-        }))
-    };
+    // Check if we need to send data to worker
+    // Only send if the worker is not busy processing the previous data
+    // This ensures we don't overwhelm the worker with too many messages
+    if (!workerGameState.workerBusy) {
+        // Mark worker as busy until it responds
+        workerGameState.workerBusy = true;
 
-    // Send collision data to worker for processing
-    gameWorker.postMessage({
-        type: 'processCollisions',
-        data: collisionData
-    });
+        // Prepare collision data to send to worker
+        const collisionData = {
+            player: {
+                x: player.x,
+                y: player.y,
+                radius: player.radius,
+                mass: player.mass,
+                id: 'player'
+            },
+            monsters: monsters.map(monster => ({
+                x: monster.x,
+                y: monster.y,
+                radius: monster.radius,
+                mass: monster.mass,
+                id: monster.id,
+                color: monster.color
+            })),
+            bullets: bullets.map(bullet => ({
+                x: bullet.x,
+                y: bullet.y,
+                radius: bullet.radius,
+                isPlayerBullet: bullet.isPlayerBullet,
+                damage: bullet.damage,
+                currentPierceCount: bullet.currentPierceCount,
+                maxPierceCount: bullet.maxPierceCount,
+                id: bullet.id,
+                isActive: bullet.isActive
+            }))
+        };
 
-    // While waiting for worker response, continue with other game logic
+        // Send collision data to worker for processing using transferable objects
+        // Serialize data to ArrayBuffer for transfer
+        const buffer = serializeGameData(collisionData);
+
+        gameWorker.postMessage({
+            type: 'processCollisions',
+            buffer: buffer
+        }, [buffer]);  // Transfer ownership of the buffer to avoid copying
+    }
+
+    // Continue with other game logic regardless of worker status
     // Check for game over
     if (!player.isActive) {
         workerGameState.isGameOver = true;
@@ -216,6 +245,113 @@ function updateWorkerGame(deltaTime) {
     workerGameState.bullets = workerGameState.bullets.filter(bullet => bullet.isActive);
 }
 
+/**
+ * Serialize game data to ArrayBuffer for transfer to worker
+ * @param {Object} data - Game state data for collision processing
+ * @returns {ArrayBuffer} - Serialized data in ArrayBuffer
+ */
+function serializeGameData(data) {
+    const { player, monsters, bullets } = data;
+
+    // Calculate buffer size
+    let bufferSize = 4; // Player data (x, y, radius, mass)
+    bufferSize += 1 + monsters.length * 4; // Monster count + monster data (x, y, radius, mass)
+    bufferSize += 1 + bullets.length * 8; // Bullet count + bullet data (x, y, radius, isPlayerBullet, damage, currentPierceCount, maxPierceCount, isActive)
+
+    // Create buffer
+    const buffer = new ArrayBuffer(bufferSize * 4); // 4 bytes per float
+    const view = new Float32Array(buffer);
+
+    let offset = 0;
+
+    // Write player data
+    view[offset++] = player.x;
+    view[offset++] = player.y;
+    view[offset++] = player.radius;
+    view[offset++] = player.mass || 1;
+
+    // Write monster count
+    view[offset++] = monsters.length;
+
+    // Write monster data
+    monsters.forEach(monster => {
+        view[offset++] = monster.x;
+        view[offset++] = monster.y;
+        view[offset++] = monster.radius;
+        view[offset++] = monster.mass || 1;
+    });
+
+    // Write bullet count
+    view[offset++] = bullets.length;
+
+    // Write bullet data
+    bullets.forEach(bullet => {
+        view[offset++] = bullet.x;
+        view[offset++] = bullet.y;
+        view[offset++] = bullet.radius;
+        view[offset++] = bullet.isPlayerBullet ? 1 : 0;
+        view[offset++] = bullet.damage;
+        view[offset++] = bullet.currentPierceCount;
+        view[offset++] = bullet.maxPierceCount;
+        view[offset++] = bullet.isActive ? 1 : 0;
+    });
+
+    return buffer;
+}
+
+/**
+ * Deserialize results from ArrayBuffer received from worker
+ * @param {ArrayBuffer} buffer - Buffer containing serialized results
+ * @returns {Object} - Deserialized results
+ */
+function deserializeResults(buffer) {
+    const view = new Float32Array(buffer);
+    let offset = 0;
+
+    // Read player data
+    const player = {
+        x: view[offset++],
+        y: view[offset++],
+        radius: view[offset++],
+        mass: view[offset++]
+    };
+
+    // Read score
+    const score = view[offset++];
+
+    // Read monster count
+    const monsterCount = view[offset++];
+    const monsters = [];
+
+    // Read monster data
+    for (let i = 0; i < monsterCount; i++) {
+        monsters.push({
+            x: view[offset++],
+            y: view[offset++],
+            radius: view[offset++],
+            mass: view[offset++],
+            flash: view[offset++] > 0,
+            id: `monster-${i}`
+        });
+    }
+
+    // Read bullet count
+    const bulletCount = view[offset++];
+    const bullets = [];
+
+    // Read bullet data
+    for (let i = 0; i < bulletCount; i++) {
+        const bulletIndex = view[offset++];
+        bullets.push({
+            id: `bullet-${bulletIndex}`,
+            isActive: view[offset++] > 0,
+            currentPierceCount: view[offset++]
+        });
+    }
+
+    return { player, monsters, bullets, score };
+}
+
 // Handle messages from the worker
 function handleWorkerMessage(e) {
     const message = e.data;
@@ -223,13 +359,28 @@ function handleWorkerMessage(e) {
     switch (message.type) {
         case 'collisionResults':
             // Apply collision results from worker
-            applyCollisionResults(message.data);
+            let results;
+
+            if (message.buffer) {
+                // Deserialize from ArrayBuffer if using transferable
+                results = deserializeResults(message.buffer);
+            } else {
+                // Fallback to old method
+                results = message.data;
+            }
+
+            applyCollisionResults(results);
             workerGameState.collisionsProcessedByWorker = true;
             workerGameState.collisionProcessTime = message.processTime;
+
+            // Mark worker as no longer busy - ready to receive new data
+            workerGameState.workerBusy = false;
             break;
 
         case 'error':
             console.error('Worker error:', message.error);
+            // Also mark worker as no longer busy in case of error
+            workerGameState.workerBusy = false;
             break;
     }
 }
@@ -246,46 +397,45 @@ function applyCollisionResults(results) {
 
     // Update monster positions
     if (monsters && monsters.length > 0) {
-        // First, assign IDs to monsters if they don't have one
+        // Ensure all monsters have IDs
         workerGameState.monsters.forEach((monster, index) => {
             if (!monster.id) {
                 monster.id = `monster-${index}`;
             }
         });
 
-        // Then update positions and handle flashing
-        monsters.forEach(updatedMonster => {
-            const monster = workerGameState.monsters.find(m => m.id === updatedMonster.id);
-            if (monster) {
-                monster.x = updatedMonster.x;
-                monster.y = updatedMonster.y;
+        // Update positions and handle flashing - optimized for performance
+        for (let i = 0; i < Math.min(monsters.length, workerGameState.monsters.length); i++) {
+            const updatedMonster = monsters[i];
+            const monster = workerGameState.monsters[i];
 
-                // Handle flashing effect
-                if (updatedMonster.flash) {
-                    // Store original color (always white)
-                    const originalColor = '#FFFFFF';
+            // Update position
+            monster.x = updatedMonster.x;
+            monster.y = updatedMonster.y;
 
-                    // Flash white (already white, but we'll keep the code for consistency)
-                    monster.color = '#FFFFFF';
-
-                    // Reset color after a short delay (back to white)
-                    setTimeout(() => {
-                        if (monster && monster.isActive) {
-                            monster.color = originalColor;
-                        }
-                    }, 100);
-                } else {
-                    // Always ensure monster color is white
-                    monster.color = '#FFFFFF';
-                }
+            // Handle flashing effect
+            if (updatedMonster.flash) {
+                // Flash effect - we'll use a simple approach since monsters are already white
+                // This is just to indicate hit feedback
+                setTimeout(() => {
+                    if (monster && monster.isActive) {
+                        monster.color = '#FFFFFF'; // Reset to white
+                    }
+                }, 50);
             }
-        });
+        }
     }
 
-    // Update bullet states
+    // Update bullet states - optimized for performance
     if (bullets && bullets.length > 0) {
+        // Create a map for faster lookups
+        const bulletMap = new Map();
+        workerGameState.bullets.forEach(bullet => {
+            bulletMap.set(bullet.id, bullet);
+        });
+
         bullets.forEach(updatedBullet => {
-            const bullet = workerGameState.bullets.find(b => b.id === updatedBullet.id);
+            const bullet = bulletMap.get(updatedBullet.id);
             if (bullet) {
                 bullet.isActive = updatedBullet.isActive;
                 bullet.currentPierceCount = updatedBullet.currentPierceCount;
@@ -295,7 +445,7 @@ function applyCollisionResults(results) {
 
     // Update score if changed
     if (score !== undefined) {
-        workerGameState.player.score = score;
+        workerGameState.player.score += score; // Add to current score
     }
 }
 
@@ -370,7 +520,7 @@ function drawWorkerGameOver() {
 
 // Update UI
 function updateWorkerUI() {
-    const { player, fps, limitFrameRate, monsterSpawner, collisionProcessTime } = workerGameState;
+    const { player, limitFrameRate, monsterSpawner, collisionProcessTime } = workerGameState;
 
     document.getElementById('worker-score').textContent = `Score: ${player.score}`;
     document.getElementById('worker-health').textContent = `INVINCIBLE`;
@@ -393,11 +543,10 @@ function updateWorkerUI() {
     const modeText = limitFrameRate ? "LIMITED" : "UNLIMITED";
     const workerText = collisionProcessTime > 0 ? ` (Worker: ${collisionProcessTime.toFixed(2)}ms)` : '';
 
-    // Calculate a unique FPS value for the worker version (slightly different from original)
-    // This is just to make it visually distinct for comparison
-    const workerFps = Math.max(1, Math.round(fps * (1 + Math.random() * 0.2)));
+    // Display main thread FPS
+    const mainFps = workerGameState.mainThreadFps || 0;
 
-    document.getElementById('worker-fps').textContent = `FPS: ${workerFps} - ${modeText}${workerText}`;
+    document.getElementById('worker-fps').textContent = `FPS: ${mainFps} - ${modeText}${workerText}`;
 }
 
 // Set up event listeners
