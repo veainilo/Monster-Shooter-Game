@@ -249,8 +249,15 @@ function updateWorkerGame(deltaTime) {
         }
     });
 
-    // Send data to worker only if it's not busy
-    if (!workerGameState.workerBusy) {
+    // Send data to worker only if it's not busy and we should update this frame
+    // Add frame skipping to reduce worker communication overhead
+    workerGameState.frameCounter = (workerGameState.frameCounter || 0) + 1;
+
+    // Only send data to worker every 3 frames
+    if (!workerGameState.workerBusy && workerGameState.frameCounter >= 3) {
+        // Reset frame counter
+        workerGameState.frameCounter = 0;
+
         // Mark worker as busy until it responds
         workerGameState.workerBusy = true;
 
@@ -475,7 +482,7 @@ function applyCollisionResults(results) {
 
 // Draw game with optimizations
 function drawWorkerGame() {
-    const { player, monsters, bullets } = workerGameState;
+    const { player, monsters } = workerGameState; // 不再需要 bullets 变量
 
     // 暂时禁用子弹绘制
     // const activeBullets = bullets.filter(bullet => bullet.isActive);
