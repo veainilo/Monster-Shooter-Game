@@ -148,10 +148,12 @@ class Player {
     }
 
     shoot(bullets) {
-        if (this.shootCooldown <= 0) {
-            bullets.push(BulletFactory.createPlayerBullet(this.x, this.y, this.aimAngle, this.bulletLevel, this.gameCanvas));
-            this.shootCooldown = this.shootInterval;
-        }
+        // 暂时禁用子弹功能
+        // if (this.shootCooldown <= 0) {
+        //     bullets.push(BulletFactory.createPlayerBullet(this.x, this.y, this.aimAngle, this.bulletLevel, this.gameCanvas));
+        //     this.shootCooldown = this.shootInterval;
+        // }
+        this.shootCooldown = this.shootInterval; // 重置冷却时间，但不创建子弹
     }
 
     draw(ctx) {

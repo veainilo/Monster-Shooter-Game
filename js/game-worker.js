@@ -217,10 +217,10 @@ function updateWorkerGame(deltaTime) {
     // Measure bullet update time
     const bulletStartTime = getWorkerTimestamp();
 
-    // Update bullets
-    bullets.forEach(bullet => {
-        bullet.update(deltaTime);
-    });
+    // 暂时禁用子弹更新
+    // bullets.forEach(bullet => {
+    //     bullet.update(deltaTime);
+    // });
 
     // Calculate bullet update time
     workerGameState.timings.bulletUpdateTime = getWorkerTimestamp() - bulletStartTime;
@@ -477,35 +477,35 @@ function applyCollisionResults(results) {
 function drawWorkerGame() {
     const { player, monsters, bullets } = workerGameState;
 
-    // Only draw active bullets
-    const activeBullets = bullets.filter(bullet => bullet.isActive);
+    // 暂时禁用子弹绘制
+    // const activeBullets = bullets.filter(bullet => bullet.isActive);
 
-    // Batch similar drawing operations to reduce context state changes
-    if (activeBullets.length > 0) {
-        // Draw player bullets
-        const playerBullets = activeBullets.filter(bullet => bullet.isPlayerBullet);
-        if (playerBullets.length > 0) {
-            workerCtx.fillStyle = '#00FFFF'; // Use a single color for all player bullets
-            workerCtx.beginPath();
-            playerBullets.forEach(bullet => {
-                workerCtx.moveTo(bullet.x + bullet.radius, bullet.y);
-                workerCtx.arc(bullet.x, bullet.y, bullet.radius, 0, Math.PI * 2);
-            });
-            workerCtx.fill();
-        }
-
-        // Draw monster bullets
-        const monsterBullets = activeBullets.filter(bullet => !bullet.isPlayerBullet);
-        if (monsterBullets.length > 0) {
-            workerCtx.fillStyle = '#FF4444'; // Use a single color for all monster bullets
-            workerCtx.beginPath();
-            monsterBullets.forEach(bullet => {
-                workerCtx.moveTo(bullet.x + bullet.radius, bullet.y);
-                workerCtx.arc(bullet.x, bullet.y, bullet.radius, 0, Math.PI * 2);
-            });
-            workerCtx.fill();
-        }
-    }
+    // // Batch similar drawing operations to reduce context state changes
+    // if (activeBullets.length > 0) {
+    //     // Draw player bullets
+    //     const playerBullets = activeBullets.filter(bullet => bullet.isPlayerBullet);
+    //     if (playerBullets.length > 0) {
+    //         workerCtx.fillStyle = '#00FFFF'; // Use a single color for all player bullets
+    //         workerCtx.beginPath();
+    //         playerBullets.forEach(bullet => {
+    //             workerCtx.moveTo(bullet.x + bullet.radius, bullet.y);
+    //             workerCtx.arc(bullet.x, bullet.y, bullet.radius, 0, Math.PI * 2);
+    //         });
+    //         workerCtx.fill();
+    //     }
+    //
+    //     // Draw monster bullets
+    //     const monsterBullets = activeBullets.filter(bullet => !bullet.isPlayerBullet);
+    //     if (monsterBullets.length > 0) {
+    //         workerCtx.fillStyle = '#FF4444'; // Use a single color for all monster bullets
+    //         workerCtx.beginPath();
+    //         monsterBullets.forEach(bullet => {
+    //             workerCtx.moveTo(bullet.x + bullet.radius, bullet.y);
+    //             workerCtx.arc(bullet.x, bullet.y, bullet.radius, 0, Math.PI * 2);
+    //         });
+    //         workerCtx.fill();
+    //     }
+    // }
 
     // Only draw active monsters
     const activeMonsters = monsters.filter(monster => monster.isActive);

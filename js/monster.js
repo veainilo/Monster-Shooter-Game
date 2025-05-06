@@ -32,12 +32,12 @@ class Monster {
             this.y += (dy / distance) * this.speed * deltaTime;
         }
 
-        // Shooting logic
+        // 暂时禁用怪物的子弹功能
         this.shootCooldown -= deltaTime * 1000;
         if (this.shootCooldown <= 0) {
-            // Calculate angle to player
-            const angle = Math.atan2(dy, dx);
-            bullets.push(BulletFactory.createMonsterBullet(this.x, this.y, angle, this.gameCanvas));
+            // // Calculate angle to player
+            // const angle = Math.atan2(dy, dx);
+            // bullets.push(BulletFactory.createMonsterBullet(this.x, this.y, angle, this.gameCanvas));
             this.shootCooldown = this.shootInterval;
         }
 
