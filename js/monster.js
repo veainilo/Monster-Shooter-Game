@@ -84,7 +84,9 @@ class Monster {
 
         // Reset color after a short delay
         setTimeout(() => {
-            this.color = originalColor;
+            if (this && this.isActive) {
+                this.color = originalColor;
+            }
         }, 100);
     }
 }

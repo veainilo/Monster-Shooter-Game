@@ -7,13 +7,13 @@
 // Message handler
 self.onmessage = function(e) {
     const message = e.data;
-    
+
     switch (message.type) {
         case 'processCollisions':
             const startTime = performance.now();
             const results = processCollisions(message.data);
             const endTime = performance.now();
-            
+
             // Send results back to main thread
             self.postMessage({
                 type: 'collisionResults',
@@ -21,7 +21,7 @@ self.onmessage = function(e) {
                 processTime: endTime - startTime
             });
             break;
-            
+
         default:
             self.postMessage({
                 type: 'error',
@@ -39,7 +39,7 @@ self.onmessage = function(e) {
 function processCollisions(data) {
     const { player, monsters, bullets } = data;
     let score = 0;
-    
+
     // Create result objects to return
     const results = {
         player: { ...player },
@@ -47,7 +47,7 @@ function processCollisions(data) {
         bullets: [],
         score: 0
     };
-    
+
     // Process Player-Monster collisions
     monsters.forEach(monster => {
         if (circlesCollide(player, monster)) {
@@ -55,13 +55,13 @@ function processCollisions(data) {
             results.monsters.push({ ...monster });
         }
     });
-    
+
     // Process Monster-Monster collisions
     for (let i = 0; i < monsters.length; i++) {
         for (let j = i + 1; j < monsters.length; j++) {
             if (circlesCollide(monsters[i], monsters[j])) {
                 resolveCollision(monsters[i], monsters[j]);
-                
+
                 // Add both monsters to results if not already added
                 if (!results.monsters.some(m => m.id === monsters[i].id)) {
                     results.monsters.push({ ...monsters[i] });
@@ -72,26 +72,34 @@ function processCollisions(data) {
             }
         }
     }
-    
+
     // Process Bullet-Monster collisions
     bullets.forEach(bullet => {
         let bulletUpdated = false;
-        
+
         monsters.forEach(monster => {
             if (circlesCollide(bullet, monster)) {
                 // Handle bullet piercing
                 bullet.currentPierceCount = (bullet.currentPierceCount || 0) + 1;
-                
+
                 // Award score for player bullets
                 if (bullet.isPlayerBullet) {
                     score += 50;
                 }
-                
+
+                // Flash monster when hit (add to results to update in main thread)
+                if (!results.monsters.some(m => m.id === monster.id)) {
+                    results.monsters.push({
+                        ...monster,
+                        flash: true
+                    });
+                }
+
                 // Deactivate bullet if it has reached max pierce count
                 if (bullet.currentPierceCount > bullet.maxPierceCount) {
                     bullet.isActive = false;
                 }
-                
+
                 // Add updated bullet to results if not already added
                 if (!bulletUpdated) {
                     results.bullets.push({ ...bullet });
@@ -100,7 +108,7 @@ function processCollisions(data) {
             }
         });
     });
-    
+
     // Process Bullet-Player collisions
     bullets.forEach(bullet => {
         if (!bullet.isPlayerBullet && circlesCollide(bullet, player)) {
@@ -109,10 +117,10 @@ function processCollisions(data) {
             results.bullets.push({ ...bullet });
         }
     });
-    
+
     // Update score
     results.score = score;
-    
+
     return results;
 }
 
@@ -138,26 +146,26 @@ function resolveCollision(circle1, circle2) {
     const dx = circle2.x - circle1.x;
     const dy = circle2.y - circle1.y;
     const distance = Math.sqrt(dx * dx + dy * dy);
-    
+
     // If circles are not colliding, no need to resolve
     if (distance >= circle1.radius + circle2.radius) return;
-    
+
     // Calculate the overlap
     const overlap = (circle1.radius + circle2.radius - distance) / 2;
-    
+
     // Calculate the unit vector in the direction of the collision
     const directionX = dx / distance;
     const directionY = dy / distance;
-    
+
     // Move circles apart based on their mass
     const mass1 = circle1.mass || 1;
     const mass2 = circle2.mass || 1;
     const totalMass = mass1 + mass2;
-    
+
     // Calculate how much each circle should move
     const circle1Move = (mass2 / totalMass) * overlap;
     const circle2Move = (mass1 / totalMass) * overlap;
-    
+
     // Move the circles apart
     circle1.x -= directionX * circle1Move;
     circle1.y -= directionY * circle1Move;
