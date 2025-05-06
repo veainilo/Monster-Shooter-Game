@@ -94,42 +94,66 @@ class Monster {
 class MonsterSpawner {
     constructor(canvas) {
         this.canvas = canvas;
-        this.spawnInterval = 800; // Much faster spawning (was 3000ms)
+        this.spawnInterval = 100; // Ultra fast spawning (100ms)
         this.spawnTimer = 0;
         this.difficultyTimer = 0;
-        this.difficultyInterval = 15000; // Increase difficulty faster (was 30000ms)
+        this.difficultyInterval = 2000; // Increase difficulty every 2 seconds
         this.difficulty = 1;
-        this.maxMonstersOnScreen = 50; // Maximum number of monsters allowed on screen
-        this.spawnBatchSize = 3; // Spawn multiple monsters at once
+        this.maxMonstersOnScreen = 200; // Allow more monsters on screen
+        this.spawnBatchSize = 25; // Spawn many monsters at once
         this.totalMonstersSpawned = 0; // Track total monsters spawned
         this.maxTotalMonsters = 500; // Maximum total monsters to spawn
+
+        // Calculate parameters to spawn all monsters in 10 seconds
+        // 500 monsters in 10 seconds = 50 monsters per second
+        this.targetSpawnTime = 10000; // 10 seconds in ms
+        this.spawnRate = this.maxTotalMonsters / (this.targetSpawnTime / 1000); // Monsters per second
+
+        // Timer for tracking spawn duration
+        this.spawnStartTime = Date.now();
+        this.spawnDuration = 0; // Will be updated during spawning
+        this.spawnComplete = false;
     }
 
     update(deltaTime, monsters) {
         // Check if we've reached the total monster limit
         if (this.totalMonstersSpawned >= this.maxTotalMonsters) {
+            // If this is the first time we've reached the limit, record the duration
+            if (!this.spawnComplete) {
+                this.spawnDuration = (Date.now() - this.spawnStartTime) / 1000; // Convert to seconds
+                this.spawnComplete = true;
+                console.log(`All ${this.maxTotalMonsters} monsters spawned in ${this.spawnDuration.toFixed(2)} seconds`);
+            }
             return; // Stop spawning if we've reached the limit
         }
 
+        // Calculate how many monsters to spawn this frame to maintain our target rate
+        const monstersToSpawnThisFrame = Math.ceil(this.spawnRate * deltaTime);
+
         // Only spawn if we haven't reached the maximum number of monsters on screen
         if (monsters.length < this.maxMonstersOnScreen) {
-            // Spawn timer
+            // Spawn timer - much faster now
             this.spawnTimer += deltaTime * 1000;
             if (this.spawnTimer >= this.spawnInterval) {
-                // Spawn multiple monsters at once
-                for (let i = 0; i < this.spawnBatchSize; i++) {
-                    // Check both screen limit and total limit
-                    if (monsters.length < this.maxMonstersOnScreen &&
-                        this.totalMonstersSpawned < this.maxTotalMonsters) {
-                        this.spawnMonster(monsters);
-                        this.totalMonstersSpawned++;
-                    }
+                // Spawn a large batch of monsters at once
+                const batchSize = Math.min(
+                    this.spawnBatchSize,
+                    this.maxTotalMonsters - this.totalMonstersSpawned,
+                    this.maxMonstersOnScreen - monsters.length,
+                    monstersToSpawnThisFrame
+                );
+
+                // Spawn the calculated batch size
+                for (let i = 0; i < batchSize; i++) {
+                    this.spawnMonster(monsters);
+                    this.totalMonstersSpawned++;
                 }
+
                 this.spawnTimer = 0;
             }
         }
 
-        // Difficulty timer
+        // Difficulty timer - increase difficulty more frequently
         this.difficultyTimer += deltaTime * 1000;
         if (this.difficultyTimer >= this.difficultyInterval) {
             this.increaseDifficulty();
@@ -172,8 +196,8 @@ class MonsterSpawner {
 
     increaseDifficulty() {
         this.difficulty++;
-        this.spawnInterval = Math.max(200, this.spawnInterval - 100);
-        this.spawnBatchSize = Math.min(10, this.spawnBatchSize + 1);
-        this.maxMonstersOnScreen = Math.min(100, this.maxMonstersOnScreen + 5);
+        this.spawnInterval = Math.max(50, this.spawnInterval - 10); // Reduce to minimum 50ms
+        this.spawnBatchSize = Math.min(50, this.spawnBatchSize + 5); // Increase batch size more aggressively
+        this.maxMonstersOnScreen = Math.min(300, this.maxMonstersOnScreen + 20); // Allow more monsters on screen
     }
 }

@@ -46,6 +46,11 @@ body {
     font-weight: bold;
 }
 
+#spawn-time {
+    color: #00FFFF;
+    font-weight: bold;
+}
+
 .game-controls {
     position: absolute;
     bottom: 10px;

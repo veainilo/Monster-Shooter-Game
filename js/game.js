@@ -218,6 +218,16 @@ function updateUI(gameState) {
     // Display monster count
     document.getElementById('monsters').textContent = `Monsters: ${monsterSpawner.totalMonstersSpawned}/${monsterSpawner.maxTotalMonsters}`;
 
+    // Display spawn time
+    let spawnTimeText = "Spawning...";
+    if (monsterSpawner.spawnComplete) {
+        spawnTimeText = `${monsterSpawner.spawnDuration.toFixed(2)}s`;
+    } else if (monsterSpawner.totalMonstersSpawned > 0) {
+        const elapsedTime = (Date.now() - monsterSpawner.spawnStartTime) / 1000;
+        spawnTimeText = `${elapsedTime.toFixed(2)}s`;
+    }
+    document.getElementById('spawn-time').textContent = `Spawn Time: ${spawnTimeText}`;
+
     // Display FPS with current mode
     const modeText = limitFrameRate ? "LIMITED (60 FPS)" : "UNLIMITED";
     document.getElementById('fps').textContent = `FPS: ${fps} - ${modeText}`;
