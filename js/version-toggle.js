@@ -1,96 +1,184 @@
 /**
  * Version Toggle - Controls which game version is running
- * This script allows toggling between original, worker, or both versions
- * to accurately compare performance without interference
+ * This script allows toggling between original and worker versions
  */
 
 // Game state tracking
 let toggleState = {
-    originalActive: true,
-    workerActive: true,
-    mode: 'both' // 'both', 'original', or 'worker'
+    currentMode: 'original', // 'original' or 'worker'
+    // Store the game version preference in localStorage
+    savePreference: function() {
+        localStorage.setItem('gameVersionPreference', this.currentMode);
+    },
+    // Load the game version preference from localStorage
+    loadPreference: function() {
+        const savedMode = localStorage.getItem('gameVersionPreference');
+        if (savedMode && (savedMode === 'original' || savedMode === 'worker')) {
+            this.currentMode = savedMode;
+            return true;
+        }
+        return false;
+    }
 };
 
 // DOM elements
 const toggleButton = document.getElementById('toggle-version');
 const activeVersionText = document.getElementById('active-version');
-const originalWrapper = document.querySelector('.game-wrapper:nth-child(1)');
-const workerWrapper = document.querySelector('.game-wrapper:nth-child(2)');
-
-// Game canvas elements - use existing references if available
+const versionTitle = document.getElementById('game-version-title');
 const originalCanvas = document.getElementById('gameCanvas');
+// Use the existing workerCanvas reference instead of creating a new one
 
 // Initialize toggle functionality
 function initVersionToggle() {
-    // Wait for both games to initialize
-    setTimeout(() => {
-        // Add click event listener to toggle button
-        toggleButton.addEventListener('click', toggleGameVersion);
+    // Add click event listener to toggle button
+    toggleButton.addEventListener('click', toggleGameVersion);
 
-        // Store references to the original game loop functions
-        window.originalGameLoop = window.gameLoop;
-        window.workerGameLoop = window.workerGameLoop;
+    // Make sure both games are stopped initially
+    stopOriginalGame();
+    stopWorkerGame();
 
-        // Store references to animation frame IDs
-        window.originalAnimationFrameId = null;
-        window.workerAnimationFrameId = null;
-    }, 1000); // Wait 1 second for games to initialize
+    // Load saved preference if any
+    if (toggleState.loadPreference()) {
+        // Apply the saved preference
+        applyVersionPreference();
+    } else {
+        // Default to original version
+        toggleState.currentMode = 'original';
+        applyVersionPreference();
+    }
+}
+
+// Apply the current version preference
+function applyVersionPreference() {
+    // Clean up any existing game elements
+    cleanupGameContainer();
+
+    if (toggleState.currentMode === 'original') {
+        // Show original version
+        showOriginalVersion();
+    } else {
+        // Show worker version
+        showWorkerVersion();
+    }
+}
+
+// Clean up the game container
+function cleanupGameContainer() {
+    // Remove any elements that might have been added dynamically
+    const gameContainer = document.getElementById('game-container');
+    const gameInfo = document.querySelector('.game-info');
+
+    // Keep only the canvases and game info
+    Array.from(gameContainer.children).forEach(child => {
+        if (child !== originalCanvas &&
+            child !== document.getElementById('workerGameCanvas') &&
+            child !== gameInfo) {
+            child.remove();
+        }
+    });
+
+    // Reset canvases to clear any content
+    resetCanvas(originalCanvas);
+    resetCanvas(document.getElementById('workerGameCanvas'));
+}
+
+// Reset a canvas to clear its content
+function resetCanvas(canvas) {
+    if (!canvas) return;
+
+    const context = canvas.getContext('2d');
+    if (context) {
+        // Clear the entire canvas
+        context.clearRect(0, 0, canvas.width, canvas.height);
+
+        // Reset any transformations
+        context.setTransform(1, 0, 0, 1, 0, 0);
+    }
 }
 
 // Toggle between game versions
 function toggleGameVersion() {
-    // Initialize mode if not set
-    if (!toggleState.mode) {
-        toggleState.mode = 'both';
+    if (toggleState.currentMode === 'original') {
+        // Switch to worker version
+        toggleState.currentMode = 'worker';
+        showWorkerVersion();
+    } else {
+        // Switch to original version
+        toggleState.currentMode = 'original';
+        showOriginalVersion();
     }
 
-    switch (toggleState.mode) {
-        case 'both':
-            // Switch to original only
-            toggleState.mode = 'original';
-            toggleState.originalActive = true;
-            toggleState.workerActive = false;
+    // Save the preference
+    toggleState.savePreference();
+}
 
-            // Update UI
-            originalWrapper.classList.remove('inactive');
-            workerWrapper.classList.add('inactive');
-            activeVersionText.textContent = 'Currently running: Original Version Only';
+// Show the original version
+function showOriginalVersion() {
+    // Update UI
+    versionTitle.textContent = 'Original Version';
+    toggleButton.textContent = 'Switch to Web Worker Version';
+    activeVersionText.textContent = 'Currently running: Original Version';
 
-            // Stop worker game
-            stopWorkerGame();
-            break;
+    // Reset game info display
+    resetGameInfo();
 
-        case 'original':
-            // Switch to worker only
-            toggleState.mode = 'worker';
-            toggleState.originalActive = false;
-            toggleState.workerActive = true;
+    // Show original canvas, hide worker canvas
+    originalCanvas.style.display = 'block';
+    document.getElementById('workerGameCanvas').style.display = 'none';
 
-            // Update UI
-            originalWrapper.classList.add('inactive');
-            workerWrapper.classList.remove('inactive');
-            activeVersionText.textContent = 'Currently running: Worker Version Only';
+    // Stop worker game if running
+    stopWorkerGame();
 
-            // Stop original game and start worker game
-            stopOriginalGame();
-            startWorkerGame();
-            break;
+    // Start original game
+    startOriginalGame();
 
-        case 'worker':
-            // Switch back to both
-            toggleState.mode = 'both';
-            toggleState.originalActive = true;
-            toggleState.workerActive = true;
+    // Update timing info element ID to match original version
+    updateTimingInfoElementId('original');
+}
 
-            // Update UI
-            originalWrapper.classList.remove('inactive');
-            workerWrapper.classList.remove('inactive');
-            activeVersionText.textContent = 'Currently running: Both Versions';
+// Reset game info display
+function resetGameInfo() {
+    document.getElementById('score').textContent = 'Score: 0';
+    document.getElementById('health').textContent = 'Health: 100';
+    document.getElementById('level').textContent = 'Bullet Level: 1';
+    document.getElementById('monsters').textContent = 'Monsters: 0/500';
+    document.getElementById('spawn-time').textContent = 'Spawn Time: 0.00s';
+    document.getElementById('fps').textContent = 'FPS: 0';
+}
 
-            // Start original game
-            startOriginalGame();
-            break;
-    }
+// Show the worker version
+function showWorkerVersion() {
+    // Update UI
+    versionTitle.textContent = 'Web Worker Version';
+    toggleButton.textContent = 'Switch to Original Version';
+    activeVersionText.textContent = 'Currently running: Web Worker Version';
+
+    // Reset game info display
+    resetGameInfo();
+
+    // Show worker canvas, hide original canvas
+    originalCanvas.style.display = 'none';
+    document.getElementById('workerGameCanvas').style.display = 'block';
+
+    // Stop original game
+    stopOriginalGame();
+
+    // Start worker game
+    startWorkerGame();
+
+    // Update timing info element ID to match worker version
+    updateTimingInfoElementId('worker');
+}
+
+// Update the timing info element ID based on the active version
+function updateTimingInfoElementId(version) {
+    // Remove any existing timing info elements to avoid duplicates
+    const existingTimingElements = document.querySelectorAll('.timing-info');
+    existingTimingElements.forEach(element => {
+        element.remove();
+    });
+
+    // The new timing info element will be created by the game's updateUI function
 }
 
 // Stop the original game
@@ -100,21 +188,23 @@ function stopOriginalGame() {
         cancelAnimationFrame(window.gameState.animationFrameId);
     }
 
-    // Hide the canvas
-    originalCanvas.style.visibility = 'hidden';
+    // Clear any setTimeout that might be running
+    if (window.gameState && window.gameState.timeoutId) {
+        clearTimeout(window.gameState.timeoutId);
+    }
+
+    // Reset game state to prevent memory leaks
+    window.gameState = null;
 }
 
 // Start the original game
 function startOriginalGame() {
-    // Only start if it's not already running
-    if (originalCanvas.style.visibility === 'hidden') {
-        // Show the canvas
-        originalCanvas.style.visibility = 'visible';
+    // Make sure any previous instance is fully stopped
+    stopOriginalGame();
 
-        // Reinitialize the game
-        if (typeof initGame === 'function') {
-            initGame();
-        }
+    // Reinitialize the game
+    if (typeof initGame === 'function') {
+        initGame();
     }
 }
 
@@ -125,28 +215,34 @@ function stopWorkerGame() {
         cancelAnimationFrame(window.workerGameState.animationFrameId);
     }
 
-    // Hide the canvas - use the global reference
-    const workerCanvas = document.getElementById('workerGameCanvas');
-    if (workerCanvas) {
-        workerCanvas.style.visibility = 'hidden';
+    // Clear any setTimeout that might be running
+    if (window.workerGameState && window.workerGameState.timeoutId) {
+        clearTimeout(window.workerGameState.timeoutId);
     }
+
+    // Remove event listeners if the function exists
+    if (typeof removeWorkerEventListeners === 'function') {
+        removeWorkerEventListeners();
+    }
+
+    // Terminate the worker if it exists
+    if (window.gameWorker) {
+        gameWorker.terminate();
+        window.gameWorker = null;
+    }
+
+    // Reset game state to prevent memory leaks
+    window.workerGameState = null;
 }
 
 // Start the worker game
 function startWorkerGame() {
-    // Get the canvas - use the global reference
-    const workerCanvas = document.getElementById('workerGameCanvas');
-    if (!workerCanvas) return;
+    // Make sure any previous instance is fully stopped
+    stopWorkerGame();
 
-    // Only start if it's not already running
-    if (workerCanvas.style.visibility === 'hidden') {
-        // Show the canvas
-        workerCanvas.style.visibility = 'visible';
-
-        // Reinitialize the game
-        if (typeof initWorkerGame === 'function') {
-            initWorkerGame();
-        }
+    // Reinitialize the game
+    if (typeof initWorkerGame === 'function') {
+        initWorkerGame();
     }
 }
 

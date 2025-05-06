@@ -19,7 +19,7 @@ function initGame() {
 
     // Game state - make it globally accessible
     window.gameState = {
-        player: new Player(canvas.width / 2, canvas.height / 2),
+        player: new Player(canvas.width / 2, canvas.height / 2, canvas),
         monsters: [],
         bullets: [],
         monsterSpawner: new MonsterSpawner(canvas),
@@ -119,7 +119,8 @@ function gameLoop(timestamp, gameState) {
         gameState.animationFrameId = requestAnimationFrame((nextTimestamp) => gameLoop(nextTimestamp, gameState));
     } else {
         // Use setTimeout with 0 delay for unlimited frame rate
-        setTimeout(() => {
+        // Store the timeout ID so we can clear it when stopping the game
+        gameState.timeoutId = setTimeout(() => {
             const nextTimestamp = getTimestamp();
             gameLoop(nextTimestamp, gameState);
         }, 0);
@@ -302,7 +303,7 @@ function updateUI(gameState) {
         timingInfoElement = document.createElement('div');
         timingInfoElement.id = 'timing-info';
         timingInfoElement.className = 'timing-info';
-        document.querySelector('#original-game .game-info').appendChild(timingInfoElement);
+        document.querySelector('.game-info').appendChild(timingInfoElement);
     }
 
     // Format timing information
@@ -421,5 +422,5 @@ function setupEventListeners(gameState) {
     window.addEventListener('resize', resizeCanvas);
 }
 
-// Start the game when the page loads
+// Start the game when the page loads (for iframe version)
 window.addEventListener('load', initGame);

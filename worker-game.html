@@ -1,0 +1,106 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Worker Game Version</title>
+    <style>
+        body {
+            margin: 0;
+            padding: 0;
+            background-color: #222;
+            font-family: Arial, sans-serif;
+            color: white;
+            overflow: hidden;
+        }
+
+        .game-container {
+            position: relative;
+            width: 100vw;
+            height: 100vh;
+            background-color: #000;
+        }
+
+        canvas {
+            width: 100%;
+            height: 100%;
+            display: block;
+        }
+
+        .game-info {
+            position: absolute;
+            top: 10px;
+            left: 10px;
+            color: white;
+            font-size: 16px;
+            text-shadow: 1px 1px 2px black;
+        }
+
+        .game-info div {
+            margin-bottom: 5px;
+        }
+
+        #fps {
+            color: #FFFF00;
+            font-weight: bold;
+        }
+
+        #monsters {
+            color: #FF00FF;
+            font-weight: bold;
+        }
+
+        #spawn-time {
+            color: #00FFFF;
+            font-weight: bold;
+        }
+
+        /* Timing information styling */
+        .timing-info {
+            margin-top: 10px;
+            padding: 5px;
+            background-color: rgba(0, 0, 0, 0.7);
+            border-radius: 3px;
+            font-size: 12px;
+            max-width: 200px;
+        }
+
+        .timing-info div {
+            margin: 2px 0;
+            color: #00FF00;
+        }
+    </style>
+</head>
+<body>
+    <div class="game-container" id="game-container">
+        <canvas id="workerGameCanvas"></canvas>
+        <div class="game-info">
+            <div id="score">Score: 0</div>
+            <div id="health">Health: 100</div>
+            <div id="level">Bullet Level: 1</div>
+            <div id="monsters">Monsters: 0/500</div>
+            <div id="spawn-time">Spawn Time: 0.00s</div>
+            <div id="fps">FPS: 0</div>
+        </div>
+    </div>
+
+    <!-- Common game logic -->
+    <script src="js/collision.js"></script>
+    <script src="js/bullet.js"></script>
+    <script src="js/monster.js"></script>
+    <script src="js/player.js"></script>
+    <script src="js/particles.js"></script>
+
+    <!-- Worker game -->
+    <script>
+        // Make sure canvas is properly initialized before starting the game
+        document.addEventListener('DOMContentLoaded', function() {
+            // Ensure canvas is properly sized
+            const canvas = document.getElementById('workerGameCanvas');
+            canvas.width = canvas.parentElement.clientWidth;
+            canvas.height = canvas.parentElement.clientHeight;
+        });
+    </script>
+    <script src="js/game-worker.js"></script>
+</body>
+</html>

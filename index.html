@@ -3,39 +3,99 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Monster Shooter Game - Worker Comparison</title>
-    <link rel="stylesheet" href="style.css">
+    <title>Monster Shooter Game - Version Comparison</title>
+    <style>
+        body {
+            margin: 0;
+            padding: 20px;
+            background-color: #222;
+            font-family: Arial, sans-serif;
+            color: white;
+        }
+
+        .game-container-wrapper {
+            width: 100%;
+            max-width: 1000px;
+            margin: 0 auto;
+            text-align: center;
+        }
+
+        h2 {
+            text-align: center;
+            color: #FFFFFF;
+            margin-bottom: 10px;
+            font-size: 24px;
+        }
+
+        .game-container {
+            position: relative;
+            width: 100%;
+            height: 600px;
+            background-color: #000;
+            box-shadow: 0 0 10px rgba(255, 255, 255, 0.2);
+            margin: 0 auto;
+        }
+
+        iframe {
+            width: 100%;
+            height: 100%;
+            border: none;
+            display: block;
+        }
+
+        .game-controls {
+            width: 100%;
+            max-width: 1000px;
+            margin: 20px auto;
+            padding: 10px;
+            background-color: rgba(0, 0, 0, 0.5);
+            border-radius: 5px;
+            text-align: center;
+        }
+
+        .game-controls p {
+            margin: 5px 0;
+            color: white;
+            font-size: 14px;
+            text-shadow: 1px 1px 2px black;
+        }
+
+        .version-toggle {
+            margin-top: 20px;
+            padding: 10px;
+            background-color: rgba(0, 0, 0, 0.3);
+            border-radius: 5px;
+        }
+
+        #toggle-version {
+            padding: 10px 20px;
+            background-color: #4CAF50;
+            color: white;
+            border: none;
+            border-radius: 5px;
+            cursor: pointer;
+            font-size: 16px;
+            transition: background-color 0.3s;
+        }
+
+        #toggle-version:hover {
+            background-color: #45a049;
+        }
+
+        #active-version {
+            margin-top: 10px;
+            font-weight: bold;
+            color: #FFFF00;
+        }
+    </style>
 </head>
 <body>
-    <div class="comparison-container">
-        <div class="game-wrapper">
-            <h2>Original Version</h2>
-            <div class="game-container" id="original-game">
-                <canvas id="gameCanvas"></canvas>
-                <div class="game-info">
-                    <div id="score">Score: 0</div>
-                    <div id="health">Health: 100</div>
-                    <div id="level">Bullet Level: 1</div>
-                    <div id="monsters">Monsters: 0/500</div>
-                    <div id="spawn-time">Spawn Time: 0.00s</div>
-                    <div id="fps">FPS: 0</div>
-                </div>
-            </div>
-        </div>
-
-        <div class="game-wrapper">
-            <h2>Web Worker Version</h2>
-            <div class="game-container" id="worker-game">
-                <canvas id="workerGameCanvas"></canvas>
-                <div class="game-info">
-                    <div id="worker-score">Score: 0</div>
-                    <div id="worker-health">Health: 100</div>
-                    <div id="worker-level">Bullet Level: 1</div>
-                    <div id="worker-monsters">Monsters: 0/500</div>
-                    <div id="worker-spawn-time">Spawn Time: 0.00s</div>
-                    <div id="worker-fps">FPS: 0</div>
-                </div>
-            </div>
+    <div class="game-container-wrapper">
+        <h2 id="game-version-title">Original Version</h2>
+        <div class="game-container" id="game-container">
+            <!-- Game iframes - only one will be visible at a time -->
+            <iframe id="original-game-iframe" src="original-game.html" allowfullscreen></iframe>
+            <iframe id="worker-game-iframe" src="worker-game.html" style="display: none;" allowfullscreen></iframe>
         </div>
     </div>
 
@@ -47,25 +107,113 @@
         <p>Bullets can pierce through multiple targets (friendly fire enabled)</p>
 
         <div class="version-toggle">
-            <button id="toggle-version">Toggle Version (Run One at a Time)</button>
-            <p id="active-version">Currently running: Both Versions</p>
+            <button id="toggle-version">Switch to Web Worker Version</button>
+            <p id="active-version">Currently running: Original Version</p>
         </div>
     </div>
 
-    <!-- Common game logic -->
-    <script src="js/collision.js"></script>
-    <script src="js/bullet.js"></script>
-    <script src="js/monster.js"></script>
-    <script src="js/player.js"></script>
-    <script src="js/particles.js"></script>
-
-    <!-- Original game -->
-    <script src="js/game.js"></script>
-
-    <!-- Worker version -->
-    <script src="js/game-worker.js"></script>
-
     <!-- Version toggle functionality -->
-    <script src="js/version-toggle.js"></script>
+    <script>
+        // Game state tracking
+        let toggleState = {
+            currentMode: 'original', // 'original' or 'worker'
+            // Store the game version preference in localStorage
+            savePreference: function() {
+                localStorage.setItem('gameVersionPreference', this.currentMode);
+            },
+            // Load the game version preference from localStorage
+            loadPreference: function() {
+                const savedMode = localStorage.getItem('gameVersionPreference');
+                if (savedMode && (savedMode === 'original' || savedMode === 'worker')) {
+                    this.currentMode = savedMode;
+                    return true;
+                }
+                return false;
+            }
+        };
+
+        // DOM elements
+        const toggleButton = document.getElementById('toggle-version');
+        const activeVersionText = document.getElementById('active-version');
+        const versionTitle = document.getElementById('game-version-title');
+        const originalIframe = document.getElementById('original-game-iframe');
+        const workerIframe = document.getElementById('worker-game-iframe');
+
+        // Initialize toggle functionality
+        function initVersionToggle() {
+            // Add click event listener to toggle button
+            toggleButton.addEventListener('click', toggleGameVersion);
+
+            // Load saved preference if any
+            if (toggleState.loadPreference()) {
+                // Apply the saved preference
+                applyVersionPreference();
+            } else {
+                // Default to original version
+                toggleState.currentMode = 'original';
+                applyVersionPreference();
+            }
+        }
+
+        // Apply the current version preference
+        function applyVersionPreference() {
+            if (toggleState.currentMode === 'original') {
+                // Show original version
+                showOriginalVersion();
+            } else {
+                // Show worker version
+                showWorkerVersion();
+            }
+        }
+
+        // Toggle between game versions
+        function toggleGameVersion() {
+            if (toggleState.currentMode === 'original') {
+                // Switch to worker version
+                toggleState.currentMode = 'worker';
+                showWorkerVersion();
+            } else {
+                // Switch to original version
+                toggleState.currentMode = 'original';
+                showOriginalVersion();
+            }
+
+            // Save the preference
+            toggleState.savePreference();
+        }
+
+        // Show the original version
+        function showOriginalVersion() {
+            // Update UI
+            versionTitle.textContent = 'Original Version';
+            toggleButton.textContent = 'Switch to Web Worker Version';
+            activeVersionText.textContent = 'Currently running: Original Version';
+
+            // Show original iframe, hide worker iframe
+            originalIframe.style.display = 'block';
+            workerIframe.style.display = 'none';
+
+            // Reload iframe to ensure a fresh start
+            originalIframe.src = originalIframe.src;
+        }
+
+        // Show the worker version
+        function showWorkerVersion() {
+            // Update UI
+            versionTitle.textContent = 'Web Worker Version';
+            toggleButton.textContent = 'Switch to Original Version';
+            activeVersionText.textContent = 'Currently running: Web Worker Version';
+
+            // Show worker iframe, hide original iframe
+            originalIframe.style.display = 'none';
+            workerIframe.style.display = 'block';
+
+            // Reload iframe to ensure a fresh start
+            workerIframe.src = workerIframe.src;
+        }
+
+        // Initialize when the page loads
+        window.addEventListener('load', initVersionToggle);
+    </script>
 </body>
 </html>

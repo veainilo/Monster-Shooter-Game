@@ -2,7 +2,7 @@
  * Bullet class for both player and monster bullets
  */
 class Bullet {
-    constructor(x, y, angle, speed, damage, radius, color, isPlayerBullet, pierceCount = 0) {
+    constructor(x, y, angle, speed, damage, radius, color, isPlayerBullet, pierceCount = 0, gameCanvas = null) {
         this.x = x;
         this.y = y;
         this.angle = angle;
@@ -12,6 +12,7 @@ class Bullet {
         this.color = color;
         this.isPlayerBullet = isPlayerBullet;
         this.isActive = true;
+        this.gameCanvas = gameCanvas; // Store reference to the canvas
 
         // Piercing properties
         this.maxPierceCount = pierceCount; // Maximum number of enemies this bullet can pierce
@@ -27,10 +28,19 @@ class Bullet {
         this.x += this.vx * deltaTime;
         this.y += this.vy * deltaTime;
 
-        // Check if bullet is out of bounds
-        if (this.x < -this.radius || this.x > canvas.width + this.radius ||
-            this.y < -this.radius || this.y > canvas.height + this.radius) {
-            this.isActive = false;
+        // Check if bullet is out of bounds (only if we have a canvas reference)
+        if (this.gameCanvas) {
+            if (this.x < -this.radius || this.x > this.gameCanvas.width + this.radius ||
+                this.y < -this.radius || this.y > this.gameCanvas.height + this.radius) {
+                this.isActive = false;
+            }
+        } else {
+            // Fallback for when no canvas is provided - use a large boundary
+            const largeBoundary = 2000; // Arbitrary large value
+            if (this.x < -this.radius - largeBoundary || this.x > largeBoundary + this.radius ||
+                this.y < -this.radius - largeBoundary || this.y > largeBoundary + this.radius) {
+                this.isActive = false;
+            }
         }
     }
 
@@ -46,7 +56,7 @@ class Bullet {
  * Factory for creating different types of player bullets based on level
  */
 class BulletFactory {
-    static createPlayerBullet(x, y, angle, level) {
+    static createPlayerBullet(x, y, angle, level, gameCanvas = null) {
         // Enhanced bullet properties based on level with higher pierce counts
         const bulletProps = {
             1: { speed: 700, damage: 30, radius: 6, color: '#00FFFF', pierce: 10 },
@@ -57,11 +67,11 @@ class BulletFactory {
         };
 
         const props = bulletProps[level] || bulletProps[1];
-        return new Bullet(x, y, angle, props.speed, props.damage, props.radius, props.color, true, props.pierce);
+        return new Bullet(x, y, angle, props.speed, props.damage, props.radius, props.color, true, props.pierce, gameCanvas);
     }
 
-    static createMonsterBullet(x, y, angle) {
+    static createMonsterBullet(x, y, angle, gameCanvas = null) {
         // Monster bullets also have pierce now (10 pierce count)
-        return new Bullet(x, y, angle, 300, 5, 4, '#FF4444', false, 10);
+        return new Bullet(x, y, angle, 300, 5, 4, '#FF4444', false, 10, gameCanvas);
     }
 }

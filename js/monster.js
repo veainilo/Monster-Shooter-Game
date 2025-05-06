@@ -2,7 +2,7 @@
  * Monster class
  */
 class Monster {
-    constructor(x, y, radius, health, speed, color) {
+    constructor(x, y, radius, health, speed, color, gameCanvas = null) {
         this.x = x;
         this.y = y;
         this.radius = radius;
@@ -15,6 +15,7 @@ class Monster {
         this.shootInterval = 500; // Even faster shooting (500ms)
         this.mass = radius * 2; // Mass for collision resolution
         this.bulletCount = 3; // Shoot multiple bullets at once
+        this.gameCanvas = gameCanvas; // Store reference to the canvas
     }
 
     update(deltaTime, player, bullets) {
@@ -36,7 +37,7 @@ class Monster {
         if (this.shootCooldown <= 0) {
             // Calculate angle to player
             const angle = Math.atan2(dy, dx);
-            bullets.push(BulletFactory.createMonsterBullet(this.x, this.y, angle));
+            bullets.push(BulletFactory.createMonsterBullet(this.x, this.y, angle, this.gameCanvas));
             this.shootCooldown = this.shootInterval;
         }
 
@@ -69,25 +70,25 @@ class Monster {
 
     takeDamage() {
         // Monster is invincible, but we'll show a visual effect
-        this.flashEffect();
+        // this.flashEffect();
 
         // Still award score to player when hit
         return true; // Return true to indicate a successful hit for scoring
     }
 
     flashEffect() {
-        // Store original color
-        const originalColor = this.color;
+        // // Store original color
+        // const originalColor = this.color;
 
-        // Flash white
-        this.color = '#FFFFFF';
+        // // Flash white
+        // this.color = '#FFFFFF';
 
-        // Reset color after a short delay
-        setTimeout(() => {
-            if (this && this.isActive) {
-                this.color = originalColor;
-            }
-        }, 100);
+        // // Reset color after a short delay
+        // setTimeout(() => {
+        //     if (this && this.isActive) {
+        //         this.color = originalColor;
+        //     }
+        // }, 100);
     }
 }
 
@@ -195,7 +196,7 @@ class MonsterSpawner {
         // Use white color for all monsters to match the original version
         const color = '#FFFFFF';
 
-        monsters.push(new Monster(x, y, radius, health, speed, color));
+        monsters.push(new Monster(x, y, radius, health, speed, color, this.canvas));
     }
 
     increaseDifficulty() {

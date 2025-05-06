@@ -30,7 +30,7 @@ function initWorkerGame() {
 
     // Create game state identical to the original game
     window.workerGameState = {
-        player: new Player(workerCanvas.width / 2, workerCanvas.height / 2),
+        player: new Player(workerCanvas.width / 2, workerCanvas.height / 2, workerCanvas),
         monsters: [],
         bullets: [],
         monsterSpawner: new MonsterSpawner(workerCanvas),
@@ -44,8 +44,8 @@ function initWorkerGame() {
         lastFpsUpdate: 0,
         fps: 0,
 
-        // Frame rate limiting
-        limitFrameRate: false, // Default to unlimited frame rate
+        // Frame rate limiting - start with limited frame rate for better stability
+        limitFrameRate: true, // Default to limited frame rate for worker version
         animationFrameId: null, // Store animation frame ID
 
         // Visual effects systems
@@ -155,7 +155,8 @@ function workerGameLoop(timestamp) {
     } else {
         // Use setTimeout with 0 delay for unlimited frame rate
         // This allows frame rates higher than monitor refresh rate
-        setTimeout(() => {
+        // Store the timeout ID so we can clear it when stopping the game
+        workerGameState.timeoutId = setTimeout(() => {
             const nextTimestamp = getWorkerTimestamp();
             workerGameLoop(nextTimestamp);
         }, 0);
@@ -503,16 +504,31 @@ function drawWorkerGameOver() {
     workerCtx.fillText('Press R to restart', workerCanvas.width / 2, workerCanvas.height / 2 + 50);
 }
 
-// Update UI
+// Update UI - throttle updates to reduce flickering
+let lastWorkerUIUpdateTime = 0;
+const UI_UPDATE_INTERVAL = 100; // Update UI every 100ms instead of every frame
+
 function updateWorkerUI() {
+    const currentTime = getWorkerTimestamp();
+
+    // Only update UI every UI_UPDATE_INTERVAL milliseconds
+    if (currentTime - lastWorkerUIUpdateTime < UI_UPDATE_INTERVAL) {
+        return;
+    }
+
+    lastWorkerUIUpdateTime = currentTime;
+
+    // Make sure workerGameState still exists
+    if (!workerGameState) return;
+
     const { player, limitFrameRate, monsterSpawner, collisionProcessTime, timings } = workerGameState;
 
-    document.getElementById('worker-score').textContent = `Score: ${player.score}`;
-    document.getElementById('worker-health').textContent = `INVINCIBLE`;
-    document.getElementById('worker-level').textContent = `Bullet Level: ${player.bulletLevel}`;
+    document.getElementById('score').textContent = `Score: ${player.score}`;
+    document.getElementById('health').textContent = `INVINCIBLE`;
+    document.getElementById('level').textContent = `Bullet Level: ${player.bulletLevel}`;
 
     // Display monster count
-    document.getElementById('worker-monsters').textContent = `Monsters: ${monsterSpawner.totalMonstersSpawned}/${monsterSpawner.maxTotalMonsters}`;
+    document.getElementById('monsters').textContent = `Monsters: ${monsterSpawner.totalMonstersSpawned}/${monsterSpawner.maxTotalMonsters}`;
 
     // Display spawn time
     let spawnTimeText = "Spawning...";
@@ -522,7 +538,7 @@ function updateWorkerUI() {
         const elapsedTime = (Date.now() - monsterSpawner.spawnStartTime) / 1000;
         spawnTimeText = `${elapsedTime.toFixed(2)}s`;
     }
-    document.getElementById('worker-spawn-time').textContent = `Spawn Time: ${spawnTimeText}`;
+    document.getElementById('spawn-time').textContent = `Spawn Time: ${spawnTimeText}`;
 
     // Display FPS with current mode and collision process time
     const modeText = limitFrameRate ? "LIMITED" : "UNLIMITED";
@@ -531,7 +547,7 @@ function updateWorkerUI() {
     // Display FPS
     const fps = workerGameState.fps || 0;
 
-    document.getElementById('worker-fps').textContent = `FPS: ${fps} - ${modeText}${workerText}`;
+    document.getElementById('fps').textContent = `FPS: ${fps} - ${modeText}${workerText}`;
 
     // Create or update timing information element
     let timingInfoElement = document.getElementById('worker-timing-info');
@@ -539,7 +555,7 @@ function updateWorkerUI() {
         timingInfoElement = document.createElement('div');
         timingInfoElement.id = 'worker-timing-info';
         timingInfoElement.className = 'timing-info';
-        document.querySelector('#worker-game .game-info').appendChild(timingInfoElement);
+        document.querySelector('.game-info').appendChild(timingInfoElement);
     }
 
     // Format timing information
@@ -557,10 +573,20 @@ function updateWorkerUI() {
     `;
 }
 
+// Store event handler references so we can remove them later
+const workerEventHandlers = {
+    keydown: null,
+    keyup: null,
+    resize: null
+};
+
 // Set up event listeners
 function setupWorkerEventListeners() {
-    // Keyboard events
-    window.addEventListener('keydown', (e) => {
+    // Remove any existing event listeners first
+    removeWorkerEventListeners();
+
+    // Keyboard events - keydown
+    workerEventHandlers.keydown = (e) => {
         if (workerGameState.isGameOver) {
             if (e.key === 'r' || e.key === 'R') {
                 initWorkerGame();
@@ -603,9 +629,10 @@ function setupWorkerEventListeners() {
                 toggleWorkerFrameRateLimit();
                 break;
         }
-    });
+    };
 
-    window.addEventListener('keyup', (e) => {
+    // Keyboard events - keyup
+    workerEventHandlers.keyup = (e) => {
         switch (e.key) {
             case 'w':
             case 'W':
@@ -628,10 +655,30 @@ function setupWorkerEventListeners() {
                 workerGameState.player.moveRight = false;
                 break;
         }
-    });
+    };
 
     // Window resize
-    window.addEventListener('resize', resizeWorkerCanvas);
+    workerEventHandlers.resize = resizeWorkerCanvas;
+
+    // Add the event listeners
+    window.addEventListener('keydown', workerEventHandlers.keydown);
+    window.addEventListener('keyup', workerEventHandlers.keyup);
+    window.addEventListener('resize', workerEventHandlers.resize);
+}
+
+// Remove worker event listeners
+function removeWorkerEventListeners() {
+    if (workerEventHandlers.keydown) {
+        window.removeEventListener('keydown', workerEventHandlers.keydown);
+    }
+
+    if (workerEventHandlers.keyup) {
+        window.removeEventListener('keyup', workerEventHandlers.keyup);
+    }
+
+    if (workerEventHandlers.resize) {
+        window.removeEventListener('resize', workerEventHandlers.resize);
+    }
 }
 
 // Toggle frame rate limiting
@@ -653,5 +700,5 @@ function toggleWorkerFrameRateLimit() {
     // If we're switching to unlimited mode, the change will take effect on the next frame
 }
 
-// Start the worker game when the page loads
+// Start the worker game when the page loads (for iframe version)
 window.addEventListener('load', initWorkerGame);

@@ -2,7 +2,7 @@
  * Player class
  */
 class Player {
-    constructor(x, y) {
+    constructor(x, y, gameCanvas) {
         this.x = x;
         this.y = y;
         this.radius = 20;
@@ -17,6 +17,7 @@ class Player {
         this.isActive = true;
         this.mass = 50; // Mass for collision resolution
         this.color = '#00FF00'; // Player color
+        this.gameCanvas = gameCanvas; // Store reference to the canvas
 
         // Movement
         this.moveUp = false;
@@ -108,8 +109,10 @@ class Player {
         this.y += dy * this.speed * deltaTime;
 
         // Keep player within canvas bounds
-        this.x = Math.max(this.radius, Math.min(canvas.width - this.radius, this.x));
-        this.y = Math.max(this.radius, Math.min(canvas.height - this.radius, this.y));
+        if (this.gameCanvas) {
+            this.x = Math.max(this.radius, Math.min(this.gameCanvas.width - this.radius, this.x));
+            this.y = Math.max(this.radius, Math.min(this.gameCanvas.height - this.radius, this.y));
+        }
 
         // Find the nearest active monster
         let nearestMonster = null;
@@ -146,7 +149,7 @@ class Player {
 
     shoot(bullets) {
         if (this.shootCooldown <= 0) {
-            bullets.push(BulletFactory.createPlayerBullet(this.x, this.y, this.aimAngle, this.bulletLevel));
+            bullets.push(BulletFactory.createPlayerBullet(this.x, this.y, this.aimAngle, this.bulletLevel, this.gameCanvas));
             this.shootCooldown = this.shootInterval;
         }
     }
@@ -188,21 +191,21 @@ class Player {
     takeDamage() {
         // Player is invincible, so no damage is taken
         // But we'll flash the player to indicate a hit
-        this.flashEffect();
+        // this.flashEffect();
     }
 
     flashEffect() {
-        // Visual feedback when hit (without taking damage)
-        const originalColor = '#00FF00';
-        const flashColor = '#FFFFFF';
+        // // Visual feedback when hit (without taking damage)
+        // const originalColor = '#00FF00';
+        // const flashColor = '#FFFFFF';
 
-        // Store the original color
-        this.color = flashColor;
+        // // Store the original color
+        // this.color = flashColor;
 
-        // Reset color after a short delay
-        setTimeout(() => {
-            this.color = originalColor;
-        }, 100);
+        // // Reset color after a short delay
+        // setTimeout(() => {
+        //     this.color = originalColor;
+        // }, 100);
     }
 
     upgradeBullet() {

@@ -6,23 +6,18 @@ body {
     color: white;
 }
 
-.comparison-container {
-    display: flex;
-    justify-content: space-between;
+.game-container-wrapper {
     width: 100%;
-    max-width: 1600px;
+    max-width: 1000px;
     margin: 0 auto;
+    text-align: center;
 }
 
-.game-wrapper {
-    flex: 1;
-    margin: 0 10px;
-}
-
-.game-wrapper h2 {
+.game-container-wrapper h2 {
     text-align: center;
     color: #FFFFFF;
     margin-bottom: 10px;
+    font-size: 24px;
 }
 
 .game-container {
@@ -31,6 +26,7 @@ body {
     height: 600px;
     background-color: #000;
     box-shadow: 0 0 10px rgba(255, 255, 255, 0.2);
+    margin: 0 auto;
 }
 
 #gameCanvas, #workerGameCanvas {
