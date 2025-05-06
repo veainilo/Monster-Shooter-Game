@@ -73,7 +73,7 @@ function initWorkerGame() {
         setupWorkerEventListeners();
 
         // Start game loop
-        workerGameLoop(getTimestamp());
+        workerGameLoop(getWorkerTimestamp());
     } else {
         alert('Your browser does not support Web Workers. The worker version will not run.');
     }
@@ -82,7 +82,7 @@ function initWorkerGame() {
 // Game loop with support for both limited and unlimited frame rates
 function workerGameLoop(timestamp) {
     // If no timestamp provided (first call), use current time
-    if (!timestamp) timestamp = getTimestamp();
+    if (!timestamp) timestamp = getWorkerTimestamp();
 
     // Calculate delta time
     const deltaTime = (timestamp - workerGameState.lastTime) / 1000;
@@ -123,7 +123,7 @@ function workerGameLoop(timestamp) {
     } else {
         // Use setTimeout with 0 delay for unlimited frame rate
         setTimeout(() => {
-            const nextTimestamp = getTimestamp();
+            const nextTimestamp = getWorkerTimestamp();
             workerGameLoop(nextTimestamp);
         }, 0);
     }
