@@ -272,53 +272,26 @@ function drawGame(gameState) {
     player.draw(ctx);
 }
 
-// Update UI
+// Update UI - only show FPS for better performance
 function updateUI(gameState) {
-    const { player, fps, limitFrameRate, monsterSpawner, timings } = gameState;
+    const { fps, limitFrameRate } = gameState;
 
-    document.getElementById('score').textContent = `Score: ${player.score}`;
-    document.getElementById('health').textContent = `INVINCIBLE`;
-    document.getElementById('level').textContent = `Bullet Level: ${player.bulletLevel}`;
-
-    // Display monster count
-    document.getElementById('monsters').textContent = `Monsters: ${monsterSpawner.totalMonstersSpawned}/${monsterSpawner.maxTotalMonsters}`;
-
-    // Display spawn time
-    let spawnTimeText = "Spawning...";
-    if (monsterSpawner.spawnComplete) {
-        spawnTimeText = `${monsterSpawner.spawnDuration.toFixed(2)}s`;
-    } else if (monsterSpawner.totalMonstersSpawned > 0) {
-        const elapsedTime = (Date.now() - monsterSpawner.spawnStartTime) / 1000;
-        spawnTimeText = `${elapsedTime.toFixed(2)}s`;
-    }
-    document.getElementById('spawn-time').textContent = `Spawn Time: ${spawnTimeText}`;
-
-    // Display FPS with current mode
+    // Only display FPS information to reduce UI updates and improve performance
     const modeText = limitFrameRate ? "LIMITED (60 FPS)" : "UNLIMITED";
     document.getElementById('fps').textContent = `FPS: ${fps} - ${modeText}`;
 
-    // Create or update timing information element
-    let timingInfoElement = document.getElementById('timing-info');
-    if (!timingInfoElement) {
-        timingInfoElement = document.createElement('div');
-        timingInfoElement.id = 'timing-info';
-        timingInfoElement.className = 'timing-info';
-        document.querySelector('.game-info').appendChild(timingInfoElement);
+    // Hide other UI elements to improve performance
+    document.getElementById('score').style.display = 'none';
+    document.getElementById('health').style.display = 'none';
+    document.getElementById('level').style.display = 'none';
+    document.getElementById('monsters').style.display = 'none';
+    document.getElementById('spawn-time').style.display = 'none';
+
+    // Remove timing info element if it exists
+    const timingInfoElement = document.getElementById('timing-info');
+    if (timingInfoElement) {
+        timingInfoElement.remove();
     }
-
-    // Format timing information
-    const formatTime = (time) => time.toFixed(2);
-
-    // Display detailed timing information
-    timingInfoElement.innerHTML = `
-        <div>Player Update: ${formatTime(timings.playerUpdateTime)}ms</div>
-        <div>Monster Update: ${formatTime(timings.monsterUpdateTime)}ms</div>
-        <div>Bullet Update: ${formatTime(timings.bulletUpdateTime)}ms</div>
-        <div>Monster Spawn: ${formatTime(timings.monsterSpawnTime)}ms</div>
-        <div>Collision: ${formatTime(timings.collisionTime)}ms</div>
-        <div>Render: ${formatTime(timings.renderTime)}ms</div>
-        <div>Total Frame: ${formatTime(timings.totalFrameTime)}ms</div>
-    `;
 }
 
 // Draw game over screen

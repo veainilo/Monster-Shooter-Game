@@ -155,18 +155,13 @@ function workerGameLoop(timestamp) {
         // Use requestAnimationFrame for limited frame rate (usually 60 FPS)
         workerGameState.animationFrameId = requestAnimationFrame(workerGameLoop);
     } else {
-        // For unlimited frame rate, use requestAnimationFrame + setTimeout(0)
-        // This combination provides better performance than setTimeout alone
-        // while still allowing frame rates higher than monitor refresh rate
-        workerGameState.animationFrameId = requestAnimationFrame(() => {
-            // Using setTimeout(0) inside requestAnimationFrame gives the browser
-            // a chance to perform other tasks between frames, preventing browser lockup
-            // while still maintaining very high frame rates
-            workerGameState.timeoutId = setTimeout(() => {
-                const nextTimestamp = getWorkerTimestamp();
-                workerGameLoop(nextTimestamp);
-            }, 0);
-        });
+        // For truly unlimited frame rate, use direct setTimeout with 0 delay
+        // This bypasses requestAnimationFrame's sync to monitor refresh rate
+        // and allows the game to run as fast as the CPU can handle
+        workerGameState.timeoutId = setTimeout(() => {
+            const nextTimestamp = getWorkerTimestamp();
+            workerGameLoop(nextTimestamp);
+        }, 0);
     }
 }
 
@@ -555,61 +550,34 @@ function drawWorkerGameOver() {
     workerCtx.fillText('Press R to restart', workerCanvas.width / 2, workerCanvas.height / 2 + 50);
 }
 
-// Update UI every frame without throttling
+// Update UI every frame - only show FPS for better performance
 function updateWorkerUI() {
     // Make sure workerGameState still exists
     if (!workerGameState) return;
 
-    const { player, limitFrameRate, monsterSpawner, collisionProcessTime, timings } = workerGameState;
+    const { limitFrameRate, collisionProcessTime } = workerGameState;
 
-    document.getElementById('score').textContent = `Score: ${player.score}`;
-    document.getElementById('health').textContent = `INVINCIBLE`;
-    document.getElementById('level').textContent = `Bullet Level: ${player.bulletLevel}`;
-
-    // Display monster count
-    document.getElementById('monsters').textContent = `Monsters: ${monsterSpawner.totalMonstersSpawned}/${monsterSpawner.maxTotalMonsters}`;
-
-    // Display spawn time
-    let spawnTimeText = "Spawning...";
-    if (monsterSpawner.spawnComplete) {
-        spawnTimeText = `${monsterSpawner.spawnDuration.toFixed(2)}s`;
-    } else if (monsterSpawner.totalMonstersSpawned > 0) {
-        const elapsedTime = (Date.now() - monsterSpawner.spawnStartTime) / 1000;
-        spawnTimeText = `${elapsedTime.toFixed(2)}s`;
-    }
-    document.getElementById('spawn-time').textContent = `Spawn Time: ${spawnTimeText}`;
-
-    // Display FPS with current mode and collision process time
+    // Only display FPS information to reduce UI updates and improve performance
     const modeText = limitFrameRate ? "LIMITED" : "UNLIMITED";
-    const workerText = collisionProcessTime > 0 ? ` (Worker: ${collisionProcessTime.toFixed(2)}ms)` : '';
+    const workerText = collisionProcessTime > 0 ? ` (Worker: ${collisionProcessTime.toFixed(0)}ms)` : '';
 
     // Display FPS
     const fps = workerGameState.fps || 0;
 
     document.getElementById('fps').textContent = `FPS: ${fps} - ${modeText}${workerText}`;
 
-    // Create or update timing information element
-    let timingInfoElement = document.getElementById('worker-timing-info');
-    if (!timingInfoElement) {
-        timingInfoElement = document.createElement('div');
-        timingInfoElement.id = 'worker-timing-info';
-        timingInfoElement.className = 'timing-info';
-        document.querySelector('.game-info').appendChild(timingInfoElement);
+    // Hide other UI elements to improve performance
+    document.getElementById('score').style.display = 'none';
+    document.getElementById('health').style.display = 'none';
+    document.getElementById('level').style.display = 'none';
+    document.getElementById('monsters').style.display = 'none';
+    document.getElementById('spawn-time').style.display = 'none';
+
+    // Remove timing info element if it exists
+    const timingInfoElement = document.getElementById('worker-timing-info');
+    if (timingInfoElement) {
+        timingInfoElement.remove();
     }
-
-    // Format timing information
-    const formatTime = (time) => time.toFixed(2);
-
-    // Display detailed timing information
-    timingInfoElement.innerHTML = `
-        <div>Player Update: ${formatTime(timings.playerUpdateTime)}ms</div>
-        <div>Monster Update: ${formatTime(timings.monsterUpdateTime)}ms</div>
-        <div>Bullet Update: ${formatTime(timings.bulletUpdateTime)}ms</div>
-        <div>Monster Spawn: ${formatTime(timings.monsterSpawnTime)}ms</div>
-        <div>Data Serialization: ${formatTime(timings.dataSerializationTime)}ms</div>
-        <div>Render: ${formatTime(timings.renderTime)}ms</div>
-        <div>Total Frame: ${formatTime(timings.totalFrameTime)}ms</div>
-    `;
 }
 
 // Store event handler references so we can remove them later
@@ -728,6 +696,12 @@ function toggleWorkerFrameRateLimit() {
     // If we're switching to limited mode, we need to cancel any existing setTimeout
     // and restart the loop with requestAnimationFrame
     if (workerGameState.limitFrameRate) {
+        // Cancel any existing timeout
+        if (workerGameState.timeoutId) {
+            clearTimeout(workerGameState.timeoutId);
+            workerGameState.timeoutId = null;
+        }
+
         // Cancel any existing animation frame
         if (workerGameState.animationFrameId) {
             cancelAnimationFrame(workerGameState.animationFrameId);
@@ -735,8 +709,20 @@ function toggleWorkerFrameRateLimit() {
 
         // Restart with requestAnimationFrame
         workerGameState.animationFrameId = requestAnimationFrame(workerGameLoop);
+    } else {
+        // If we're switching to unlimited mode, cancel any existing animation frame
+        // and restart with setTimeout
+        if (workerGameState.animationFrameId) {
+            cancelAnimationFrame(workerGameState.animationFrameId);
+            workerGameState.animationFrameId = null;
+        }
+
+        // Restart with setTimeout for unlimited frame rate
+        workerGameState.timeoutId = setTimeout(() => {
+            const nextTimestamp = getWorkerTimestamp();
+            workerGameLoop(nextTimestamp);
+        }, 0);
     }
-    // If we're switching to unlimited mode, the change will take effect on the next frame
 }
 
 // Start the worker game when the page loads (for iframe version)
