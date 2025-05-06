@@ -1,0 +1,276 @@
+/**
+ * Main game logic
+ */
+
+// Get canvas and context
+const canvas = document.getElementById('gameCanvas');
+const ctx = canvas.getContext('2d');
+
+// Set canvas size to match container
+function resizeCanvas() {
+    const container = canvas.parentElement;
+    canvas.width = container.clientWidth;
+    canvas.height = container.clientHeight;
+}
+
+// Initialize game
+function initGame() {
+    resizeCanvas();
+
+    // Game state
+    const gameState = {
+        player: new Player(canvas.width / 2, canvas.height / 2),
+        monsters: [],
+        bullets: [],
+        monsterSpawner: new MonsterSpawner(canvas),
+        lastTime: 0,
+        isGameOver: false,
+        upgradePoints: 0,
+        upgradeThreshold: 500 // Score needed for an upgrade
+    };
+
+    // Set up event listeners
+    setupEventListeners(gameState);
+
+    // Start game loop
+    requestAnimationFrame((timestamp) => gameLoop(timestamp, gameState));
+}
+
+// Game loop
+function gameLoop(timestamp, gameState) {
+    // Calculate delta time
+    const deltaTime = (timestamp - gameState.lastTime) / 1000;
+    gameState.lastTime = timestamp;
+
+    // Clear canvas
+    ctx.fillStyle = '#111';
+    ctx.fillRect(0, 0, canvas.width, canvas.height);
+
+    if (!gameState.isGameOver) {
+        // Update game
+        updateGame(deltaTime, gameState);
+
+        // Draw game
+        drawGame(gameState);
+
+        // Update UI
+        updateUI(gameState);
+    } else {
+        // Draw game over screen
+        drawGameOver(gameState);
+    }
+
+    // Continue game loop
+    requestAnimationFrame((timestamp) => gameLoop(timestamp, gameState));
+}
+
+// Update game state
+function updateGame(deltaTime, gameState) {
+    const { player, monsters, bullets, monsterSpawner } = gameState;
+
+    // Update player
+    player.update(deltaTime, monsters, bullets);
+
+    // Update monsters
+    monsters.forEach(monster => {
+        monster.update(deltaTime, player, bullets);
+    });
+
+    // Update bullets
+    bullets.forEach(bullet => {
+        bullet.update(deltaTime);
+    });
+
+    // Spawn monsters
+    monsterSpawner.update(deltaTime, monsters);
+
+    // Check for collisions
+    handleCollisions(gameState);
+
+    // Clean up inactive entities
+    cleanupEntities(gameState);
+
+    // Check for game over
+    if (!player.isActive) {
+        gameState.isGameOver = true;
+    }
+
+    // Check for upgrade
+    if (player.score >= gameState.upgradeThreshold) {
+        gameState.upgradePoints++;
+        gameState.upgradeThreshold += 500;
+    }
+}
+
+// Handle collisions
+function handleCollisions(gameState) {
+    const { player, monsters, bullets } = gameState;
+
+    // Player-Monster collisions
+    monsters.forEach(monster => {
+        if (monster.isActive && player.isActive && circlesCollide(player, monster)) {
+            resolveCollision(player, monster);
+        }
+    });
+
+    // Monster-Monster collisions
+    for (let i = 0; i < monsters.length; i++) {
+        for (let j = i + 1; j < monsters.length; j++) {
+            if (monsters[i].isActive && monsters[j].isActive && circlesCollide(monsters[i], monsters[j])) {
+                resolveCollision(monsters[i], monsters[j]);
+            }
+        }
+    }
+
+    // Bullet-Monster collisions
+    bullets.forEach(bullet => {
+        if (bullet.isActive && bullet.isPlayerBullet) {
+            monsters.forEach(monster => {
+                if (monster.isActive && circlesCollide(bullet, monster)) {
+                    monster.takeDamage(bullet.damage);
+                    bullet.isActive = false;
+
+                    if (!monster.isActive) {
+                        player.addScore(50);
+                    }
+                }
+            });
+        }
+    });
+
+    // Bullet-Player collisions - player is invincible but we still show visual feedback
+    bullets.forEach(bullet => {
+        if (bullet.isActive && !bullet.isPlayerBullet && player.isActive && circlesCollide(bullet, player)) {
+            player.takeDamage(0); // 0 damage, just for visual effect
+            bullet.isActive = false;
+        }
+    });
+}
+
+// Clean up inactive entities
+function cleanupEntities(gameState) {
+    gameState.monsters = gameState.monsters.filter(monster => monster.isActive);
+    gameState.bullets = gameState.bullets.filter(bullet => bullet.isActive);
+}
+
+// Draw game
+function drawGame(gameState) {
+    const { player, monsters, bullets } = gameState;
+
+    // Draw bullets
+    bullets.forEach(bullet => {
+        bullet.draw(ctx);
+    });
+
+    // Draw monsters
+    monsters.forEach(monster => {
+        monster.draw(ctx);
+    });
+
+    // Draw player
+    player.draw(ctx);
+}
+
+// Update UI
+function updateUI(gameState) {
+    const { player } = gameState;
+
+    document.getElementById('score').textContent = `Score: ${player.score}`;
+    document.getElementById('health').textContent = `INVINCIBLE`;
+    document.getElementById('level').textContent = `Bullet Level: ${player.bulletLevel}`;
+}
+
+// Draw game over screen
+function drawGameOver(gameState) {
+    ctx.fillStyle = 'rgba(0, 0, 0, 0.7)';
+    ctx.fillRect(0, 0, canvas.width, canvas.height);
+
+    ctx.fillStyle = '#FF0000';
+    ctx.font = '48px Arial';
+    ctx.textAlign = 'center';
+    ctx.fillText('GAME OVER', canvas.width / 2, canvas.height / 2 - 50);
+
+    ctx.fillStyle = '#FFFFFF';
+    ctx.font = '24px Arial';
+    ctx.fillText(`Final Score: ${gameState.player.score}`, canvas.width / 2, canvas.height / 2);
+
+    ctx.font = '18px Arial';
+    ctx.fillText('Press R to restart', canvas.width / 2, canvas.height / 2 + 50);
+}
+
+// Set up event listeners
+function setupEventListeners(gameState) {
+    // Keyboard events
+    window.addEventListener('keydown', (e) => {
+        if (gameState.isGameOver) {
+            if (e.key === 'r' || e.key === 'R') {
+                initGame();
+            }
+            return;
+        }
+
+        switch (e.key) {
+            case 'w':
+            case 'W':
+            case 'ArrowUp':
+                gameState.player.moveUp = true;
+                break;
+            case 's':
+            case 'S':
+            case 'ArrowDown':
+                gameState.player.moveDown = true;
+                break;
+            case 'a':
+            case 'A':
+            case 'ArrowLeft':
+                gameState.player.moveLeft = true;
+                break;
+            case 'd':
+            case 'D':
+            case 'ArrowRight':
+                gameState.player.moveRight = true;
+                break;
+            case 'u':
+            case 'U':
+                if (gameState.upgradePoints > 0) {
+                    if (gameState.player.upgradeBullet()) {
+                        gameState.upgradePoints--;
+                    }
+                }
+                break;
+        }
+    });
+
+    window.addEventListener('keyup', (e) => {
+        switch (e.key) {
+            case 'w':
+            case 'W':
+            case 'ArrowUp':
+                gameState.player.moveUp = false;
+                break;
+            case 's':
+            case 'S':
+            case 'ArrowDown':
+                gameState.player.moveDown = false;
+                break;
+            case 'a':
+            case 'A':
+            case 'ArrowLeft':
+                gameState.player.moveLeft = false;
+                break;
+            case 'd':
+            case 'D':
+            case 'ArrowRight':
+                gameState.player.moveRight = false;
+                break;
+        }
+    });
+
+    // No mouse events needed
+
+    // Window resize
+    window.addEventListener('resize', resizeCanvas);
+}
+
+// Start the game when the page loads
+window.addEventListener('load', initGame);

@@ -1,0 +1,30 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Monster Shooter Game</title>
+    <link rel="stylesheet" href="style.css">
+</head>
+<body>
+    <div class="game-container">
+        <canvas id="gameCanvas"></canvas>
+        <div class="game-info">
+            <div id="score">Score: 0</div>
+            <div id="health">Health: 100</div>
+            <div id="level">Bullet Level: 1</div>
+        </div>
+        <div class="game-controls">
+            <p>Controls: WASD to move (auto-targeting and auto-shooting)</p>
+            <p>Press 'U' to upgrade bullets (when available)</p>
+            <p>You are INVINCIBLE! Survive the monster onslaught!</p>
+        </div>
+    </div>
+
+    <script src="js/collision.js"></script>
+    <script src="js/bullet.js"></script>
+    <script src="js/monster.js"></script>
+    <script src="js/player.js"></script>
+    <script src="js/game.js"></script>
+</body>
+</html>

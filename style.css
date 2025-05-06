@@ -1,0 +1,50 @@
+body {
+    margin: 0;
+    padding: 0;
+    display: flex;
+    justify-content: center;
+    align-items: center;
+    height: 100vh;
+    background-color: #222;
+    font-family: Arial, sans-serif;
+}
+
+.game-container {
+    position: relative;
+    width: 800px;
+    height: 600px;
+    background-color: #000;
+    box-shadow: 0 0 10px rgba(255, 255, 255, 0.2);
+}
+
+#gameCanvas {
+    width: 100%;
+    height: 100%;
+    display: block;
+}
+
+.game-info {
+    position: absolute;
+    top: 10px;
+    left: 10px;
+    color: white;
+    font-size: 16px;
+    text-shadow: 1px 1px 2px black;
+}
+
+.game-info div {
+    margin-bottom: 5px;
+}
+
+.game-controls {
+    position: absolute;
+    bottom: 10px;
+    left: 10px;
+    color: white;
+    font-size: 14px;
+    text-shadow: 1px 1px 2px black;
+}
+
+.game-controls p {
+    margin: 5px 0;
+}
