@@ -125,6 +125,7 @@ function workerGameLoop(timestamp) {
     }
 
     // Process any pending worker results at the start of the frame
+    // If there are results, process them; if not, just skip
     if (workerGameState.pendingWorkerResults) {
         const results = workerGameState.pendingWorkerResults;
 
@@ -145,6 +146,7 @@ function workerGameLoop(timestamp) {
         // Clear pending results
         workerGameState.pendingWorkerResults = null;
     }
+    // If no results, just continue with the frame
 
     // Clear canvas
     workerCtx.fillStyle = '#111';
