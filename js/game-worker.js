@@ -146,7 +146,7 @@ function updateWorkerGame(deltaTime) {
         bullet.update(deltaTime);
     });
 
-    // Spawn monsters
+    // Spawn monsters - use the same spawning logic as the original version
     monsterSpawner.update(deltaTime, monsters);
 
     // Ensure all monsters and bullets have IDs

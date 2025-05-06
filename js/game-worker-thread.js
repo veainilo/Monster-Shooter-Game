@@ -48,42 +48,39 @@ function processCollisions(data) {
         score: 0
     };
 
+    // Create a working copy of monsters that we can modify
+    const workingMonsters = monsters.map(m => ({ ...m }));
+
     // Process Player-Monster collisions
-    monsters.forEach(monster => {
+    workingMonsters.forEach(monster => {
         if (circlesCollide(player, monster)) {
             resolveCollision(results.player, monster);
-            results.monsters.push({ ...monster });
         }
     });
 
-    // Process Monster-Monster collisions
-    for (let i = 0; i < monsters.length; i++) {
-        for (let j = i + 1; j < monsters.length; j++) {
-            if (circlesCollide(monsters[i], monsters[j])) {
-                resolveCollision(monsters[i], monsters[j]);
-
-                // Add both monsters to results if not already added
-                if (!results.monsters.some(m => m.id === monsters[i].id)) {
-                    results.monsters.push({
-                        ...monsters[i],
-                        color: '#FFFFFF' // Ensure color is white
-                    });
-                }
-                if (!results.monsters.some(m => m.id === monsters[j].id)) {
-                    results.monsters.push({
-                        ...monsters[j],
-                        color: '#FFFFFF' // Ensure color is white
-                    });
-                }
+    // Process Monster-Monster collisions - match original behavior exactly
+    // Only do a single pass, just like the original version
+    for (let i = 0; i < workingMonsters.length; i++) {
+        for (let j = i + 1; j < workingMonsters.length; j++) {
+            if (circlesCollide(workingMonsters[i], workingMonsters[j])) {
+                resolveCollision(workingMonsters[i], workingMonsters[j]);
             }
         }
     }
+
+    // Add all working monsters to results to ensure all positions are updated
+    workingMonsters.forEach(monster => {
+        results.monsters.push({
+            ...monster,
+            color: '#FFFFFF' // Ensure color is white
+        });
+    });
 
     // Process Bullet-Monster collisions
     bullets.forEach(bullet => {
         let bulletUpdated = false;
 
-        monsters.forEach(monster => {
+        workingMonsters.forEach(monster => {
             if (circlesCollide(bullet, monster)) {
                 // Handle bullet piercing
                 bullet.currentPierceCount = (bullet.currentPierceCount || 0) + 1;
@@ -93,13 +90,10 @@ function processCollisions(data) {
                     score += 50;
                 }
 
-                // Flash monster when hit (add to results to update in main thread)
-                if (!results.monsters.some(m => m.id === monster.id)) {
-                    results.monsters.push({
-                        ...monster,
-                        flash: true,
-                        color: '#FFFFFF' // Ensure color is white
-                    });
+                // Mark monster for flashing
+                const monsterInResults = results.monsters.find(m => m.id === monster.id);
+                if (monsterInResults) {
+                    monsterInResults.flash = true;
                 }
 
                 // Deactivate bullet if it has reached max pierce count
@@ -157,7 +151,7 @@ function resolveCollision(circle1, circle2) {
     // If circles are not colliding, no need to resolve
     if (distance >= circle1.radius + circle2.radius) return;
 
-    // Calculate the overlap
+    // Calculate the overlap - use the same formula as the original version
     const overlap = (circle1.radius + circle2.radius - distance) / 2;
 
     // Calculate the unit vector in the direction of the collision
