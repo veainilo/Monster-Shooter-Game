@@ -55,6 +55,7 @@ function initWorkerGame() {
         collisionsProcessedByWorker: false,
         collisionProcessTime: 0,
         workerBusy: false, // Flag to track if worker is processing data
+        pendingWorkerResults: null, // Store worker results for processing in the next frame
 
         // Performance tracking
         mainThreadFps: 0, // Track main thread FPS separately from worker FPS
@@ -121,6 +122,28 @@ function workerGameLoop(timestamp) {
         workerGameState.fps = Math.round((workerGameState.frameCount * 1000) / elapsed);
         workerGameState.frameCount = 0;
         workerGameState.lastFpsUpdate = timestamp;
+    }
+
+    // Process any pending worker results at the start of the frame
+    if (workerGameState.pendingWorkerResults) {
+        const results = workerGameState.pendingWorkerResults;
+
+        // Process the results
+        if (results.buffer) {
+            // Deserialize from ArrayBuffer
+            const view = new Float32Array(results.buffer);
+            const deserializedResults = deserializeResults(view);
+            applyCollisionResults(deserializedResults);
+        } else if (results.data) {
+            applyCollisionResults(results.data);
+        }
+
+        // Update collision process time for UI display
+        workerGameState.collisionProcessTime = results.processTime;
+        workerGameState.collisionsProcessedByWorker = true;
+
+        // Clear pending results
+        workerGameState.pendingWorkerResults = null;
     }
 
     // Clear canvas
@@ -305,24 +328,26 @@ function updateWorkerGame(deltaTime) {
 
 
 
-// Handle messages from the worker
+// Handle messages from the worker - store results for next frame
 function handleWorkerMessage(e) {
     const message = e.data;
 
     switch (message.type) {
         case 'collisionResults':
-            // Apply collision results from worker
+            // Store collision results for processing in the next frame
             if (message.buffer) {
-                // Deserialize from ArrayBuffer
-                const view = new Float32Array(message.buffer);
-                const results = deserializeResults(view);
-                applyCollisionResults(results);
+                // Store the buffer and process time for next frame
+                workerGameState.pendingWorkerResults = {
+                    buffer: message.buffer,
+                    processTime: message.processTime
+                };
             } else {
-                applyCollisionResults(message.data);
+                // Store the data and process time for next frame
+                workerGameState.pendingWorkerResults = {
+                    data: message.data,
+                    processTime: message.processTime
+                };
             }
-
-            workerGameState.collisionsProcessedByWorker = true;
-            workerGameState.collisionProcessTime = message.processTime;
 
             // Mark worker as no longer busy - ready to receive new data
             workerGameState.workerBusy = false;
