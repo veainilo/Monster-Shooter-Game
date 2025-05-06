@@ -1,5 +1,5 @@
 /**
- * Main game logic
+ * Main game logic - Original Version (Non-Worker)
  */
 
 // Get canvas and context
@@ -35,7 +35,10 @@ function initGame() {
 
         // Frame rate limiting
         limitFrameRate: false, // Default to unlimited frame rate
-        animationFrameId: null // Store animation frame ID
+        animationFrameId: null, // Store animation frame ID
+
+        // Visual effects systems
+        particleSystem: new ParticleSystem()
     };
 
     // Set up event listeners
@@ -158,16 +161,24 @@ function handleCollisions(gameState) {
         }
     }
 
-    // Bullet-Monster collisions
+    // Bullet-Monster collisions (both player bullets and monster bullets)
     bullets.forEach(bullet => {
-        if (bullet.isActive && bullet.isPlayerBullet) {
+        if (bullet.isActive) {
             monsters.forEach(monster => {
                 if (monster.isActive && circlesCollide(bullet, monster)) {
                     // Since monsters are invincible, takeDamage just returns true for scoring
                     if (monster.takeDamage()) {
-                        player.addScore(50);
+                        // Only award score if it's a player bullet
+                        if (bullet.isPlayerBullet) {
+                            player.addScore(50);
+                        }
                     }
-                    bullet.isActive = false;
+
+                    // Handle bullet piercing
+                    bullet.currentPierceCount++;
+                    if (bullet.currentPierceCount > bullet.maxPierceCount) {
+                        bullet.isActive = false;
+                    }
                 }
             });
         }
@@ -177,7 +188,7 @@ function handleCollisions(gameState) {
     bullets.forEach(bullet => {
         if (bullet.isActive && !bullet.isPlayerBullet && player.isActive && circlesCollide(bullet, player)) {
             player.takeDamage(0); // 0 damage, just for visual effect
-            bullet.isActive = false;
+            bullet.isActive = false; // Player bullets don't pierce through player
         }
     });
 }

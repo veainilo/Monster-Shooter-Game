@@ -2,7 +2,7 @@
  * Bullet class for both player and monster bullets
  */
 class Bullet {
-    constructor(x, y, angle, speed, damage, radius, color, isPlayerBullet) {
+    constructor(x, y, angle, speed, damage, radius, color, isPlayerBullet, pierceCount = 0) {
         this.x = x;
         this.y = y;
         this.angle = angle;
@@ -12,6 +12,10 @@ class Bullet {
         this.color = color;
         this.isPlayerBullet = isPlayerBullet;
         this.isActive = true;
+
+        // Piercing properties
+        this.maxPierceCount = pierceCount; // Maximum number of enemies this bullet can pierce
+        this.currentPierceCount = 0; // Current number of enemies pierced
 
         // Calculate velocity based on angle
         this.vx = Math.cos(angle) * speed;
@@ -43,20 +47,21 @@ class Bullet {
  */
 class BulletFactory {
     static createPlayerBullet(x, y, angle, level) {
-        // Enhanced bullet properties based on level
+        // Enhanced bullet properties based on level with higher pierce counts
         const bulletProps = {
-            1: { speed: 700, damage: 30, radius: 6, color: '#00FFFF' },
-            2: { speed: 750, damage: 40, radius: 7, color: '#00AAFF' },
-            3: { speed: 800, damage: 50, radius: 8, color: '#0088FF' },
-            4: { speed: 850, damage: 60, radius: 9, color: '#0044FF' },
-            5: { speed: 900, damage: 70, radius: 10, color: '#0000FF' }
+            1: { speed: 700, damage: 30, radius: 6, color: '#00FFFF', pierce: 10 },
+            2: { speed: 750, damage: 40, radius: 7, color: '#00AAFF', pierce: 15 },
+            3: { speed: 800, damage: 50, radius: 8, color: '#0088FF', pierce: 20 },
+            4: { speed: 850, damage: 60, radius: 9, color: '#0044FF', pierce: 25 },
+            5: { speed: 900, damage: 70, radius: 10, color: '#0000FF', pierce: 30 }
         };
 
         const props = bulletProps[level] || bulletProps[1];
-        return new Bullet(x, y, angle, props.speed, props.damage, props.radius, props.color, true);
+        return new Bullet(x, y, angle, props.speed, props.damage, props.radius, props.color, true, props.pierce);
     }
 
     static createMonsterBullet(x, y, angle) {
-        return new Bullet(x, y, angle, 300, 5, 4, '#FF4444', false);
+        // Monster bullets also have pierce now (10 pierce count)
+        return new Bullet(x, y, angle, 300, 5, 4, '#FF4444', false, 10);
     }
 }

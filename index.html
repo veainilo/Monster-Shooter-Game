@@ -3,32 +3,61 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Monster Shooter Game</title>
+    <title>Monster Shooter Game - Worker Comparison</title>
     <link rel="stylesheet" href="style.css">
 </head>
 <body>
-    <div class="game-container">
-        <canvas id="gameCanvas"></canvas>
-        <div class="game-info">
-            <div id="score">Score: 0</div>
-            <div id="health">Health: 100</div>
-            <div id="level">Bullet Level: 1</div>
-            <div id="monsters">Monsters: 0/500</div>
-            <div id="spawn-time">Spawn Time: 0.00s</div>
-            <div id="fps">FPS: 0</div>
+    <div class="comparison-container">
+        <div class="game-wrapper">
+            <h2>Original Version</h2>
+            <div class="game-container" id="original-game">
+                <canvas id="gameCanvas"></canvas>
+                <div class="game-info">
+                    <div id="score">Score: 0</div>
+                    <div id="health">Health: 100</div>
+                    <div id="level">Bullet Level: 1</div>
+                    <div id="monsters">Monsters: 0/500</div>
+                    <div id="spawn-time">Spawn Time: 0.00s</div>
+                    <div id="fps">FPS: 0</div>
+                </div>
+            </div>
         </div>
-        <div class="game-controls">
-            <p>Controls: WASD to move (auto-targeting and auto-shooting)</p>
-            <p>Press 'U' to upgrade bullets (when available)</p>
-            <p>Press 'F' to toggle frame rate limit</p>
-            <p>You are INVINCIBLE! Survive the monster onslaught!</p>
+
+        <div class="game-wrapper">
+            <h2>Web Worker Version</h2>
+            <div class="game-container" id="worker-game">
+                <canvas id="workerGameCanvas"></canvas>
+                <div class="game-info">
+                    <div id="worker-score">Score: 0</div>
+                    <div id="worker-health">Health: 100</div>
+                    <div id="worker-level">Bullet Level: 1</div>
+                    <div id="worker-monsters">Monsters: 0/500</div>
+                    <div id="worker-spawn-time">Spawn Time: 0.00s</div>
+                    <div id="worker-fps">FPS: 0</div>
+                </div>
+            </div>
         </div>
     </div>
 
+    <div class="game-controls">
+        <p>Controls: WASD to move (auto-targeting and auto-shooting)</p>
+        <p>Press 'U' to upgrade bullets (when available)</p>
+        <p>Press 'F' to toggle frame rate limit</p>
+        <p>You are INVINCIBLE! Survive the monster onslaught!</p>
+        <p>Bullets can pierce through multiple targets (friendly fire enabled)</p>
+    </div>
+
+    <!-- Common game logic -->
     <script src="js/collision.js"></script>
     <script src="js/bullet.js"></script>
     <script src="js/monster.js"></script>
     <script src="js/player.js"></script>
+    <script src="js/particles.js"></script>
+
+    <!-- Original game -->
     <script src="js/game.js"></script>
+
+    <!-- Worker version -->
+    <script src="js/game-worker.js"></script>
 </body>
 </html>

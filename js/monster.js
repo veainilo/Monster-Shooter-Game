@@ -12,8 +12,9 @@ class Monster {
         this.color = color;
         this.isActive = true;
         this.shootCooldown = 0;
-        this.shootInterval = 1000; // Faster shooting (was 2000ms)
+        this.shootInterval = 500; // Even faster shooting (500ms)
         this.mass = radius * 2; // Mass for collision resolution
+        this.bulletCount = 3; // Shoot multiple bullets at once
     }
 
     update(deltaTime, player, bullets) {
@@ -94,13 +95,13 @@ class Monster {
 class MonsterSpawner {
     constructor(canvas) {
         this.canvas = canvas;
-        this.spawnInterval = 100; // Ultra fast spawning (100ms)
+        this.spawnInterval = 50; // Even faster spawning (50ms)
         this.spawnTimer = 0;
         this.difficultyTimer = 0;
-        this.difficultyInterval = 2000; // Increase difficulty every 2 seconds
+        this.difficultyInterval = 1000; // Increase difficulty every second
         this.difficulty = 1;
-        this.maxMonstersOnScreen = 200; // Allow more monsters on screen
-        this.spawnBatchSize = 25; // Spawn many monsters at once
+        this.maxMonstersOnScreen = 500; // Allow even more monsters on screen
+        this.spawnBatchSize = 50; // Spawn even more monsters at once
         this.totalMonstersSpawned = 0; // Track total monsters spawned
         this.maxTotalMonsters = 500; // Maximum total monsters to spawn
 
