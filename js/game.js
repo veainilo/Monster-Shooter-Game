@@ -17,8 +17,8 @@ function resizeCanvas() {
 function initGame() {
     resizeCanvas();
 
-    // Game state
-    const gameState = {
+    // Game state - make it globally accessible
+    window.gameState = {
         player: new Player(canvas.width / 2, canvas.height / 2),
         monsters: [],
         bullets: [],
@@ -42,10 +42,10 @@ function initGame() {
     };
 
     // Set up event listeners
-    setupEventListeners(gameState);
+    setupEventListeners(window.gameState);
 
     // Start game loop with high performance timing
-    gameLoop(getTimestamp(), gameState);
+    gameLoop(getTimestamp(), window.gameState);
 }
 
 // High performance timestamp function

@@ -83,3 +83,36 @@ body {
     font-size: 14px;
     text-shadow: 1px 1px 2px black;
 }
+
+.version-toggle {
+    margin-top: 20px;
+    padding: 10px;
+    background-color: rgba(0, 0, 0, 0.3);
+    border-radius: 5px;
+}
+
+#toggle-version {
+    padding: 10px 20px;
+    background-color: #4CAF50;
+    color: white;
+    border: none;
+    border-radius: 5px;
+    cursor: pointer;
+    font-size: 16px;
+    transition: background-color 0.3s;
+}
+
+#toggle-version:hover {
+    background-color: #45a049;
+}
+
+#active-version {
+    margin-top: 10px;
+    font-weight: bold;
+    color: #FFFF00;
+}
+
+.game-wrapper.inactive {
+    opacity: 0.3;
+    pointer-events: none;
+}

@@ -15,9 +15,9 @@ function resizeWorkerCanvas() {
     workerCanvas.height = container.clientHeight;
 }
 
-// Game state and worker
+// Game state and worker - make them globally accessible
 let gameWorker = null;
-let workerGameState = null;
+window.workerGameState = null;
 
 // High performance timestamp function for worker version
 const getWorkerTimestamp = () => {
@@ -29,7 +29,7 @@ function initWorkerGame() {
     resizeWorkerCanvas();
 
     // Create game state identical to the original game
-    workerGameState = {
+    window.workerGameState = {
         player: new Player(workerCanvas.width / 2, workerCanvas.height / 2),
         monsters: [],
         bullets: [],
